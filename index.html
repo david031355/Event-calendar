@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>לוח אירועים</title>
+    <title>חתונות ושמחות ישיבת יסודות</title>
     
     <style>
         /* ---------------------------------- */
@@ -35,8 +35,8 @@
 
         .event-grid {
             display: grid;
-            /* 6 עמודות: תאריך, יום, שעה, אירוע, מיקום, תזמורת */
-            grid-template-columns: 1fr 0.8fr 0.8fr 2fr 1.5fr 1.5fr; 
+            /* 5 עמודות חדשות: יום+תאריך, שעה, אירוע, מיקום, תזמורת/DJ */
+            grid-template-columns: 1.8fr 0.8fr 2fr 1.5fr 1.5fr; 
             gap: 1px; 
             border: 1px solid #ddd;
             border-radius: 8px;
@@ -63,12 +63,12 @@
         }
         
         /* עיצוב שורות לסירוגין */
-        .event-grid > div:nth-child(12n + 7), 
-        .event-grid > div:nth-child(12n + 8),
-        .event-grid > div:nth-child(12n + 9),
-        .event-grid > div:nth-child(12n + 10),
-        .event-grid > div:nth-child(12n + 11),
-        .event-grid > div:nth-child(12n + 12) {
+        /* מתאים ל-5 עמודות */
+        .event-grid > div:nth-child(10n + 6), 
+        .event-grid > div:nth-child(10n + 7),
+        .event-grid > div:nth-child(10n + 8),
+        .event-grid > div:nth-child(10n + 9),
+        .event-grid > div:nth-child(10n + 10) {
             background-color: #fcf8f0; 
         }
 
@@ -76,6 +76,16 @@
             font-size: 1.1em;
             color: #A0522D;
             font-weight: 600;
+        }
+        
+        .event-details-content {
+            display: block;
+            line-height: 1.3;
+        }
+
+        .event-day {
+            font-weight: bold;
+            color: #000;
         }
         
         .loading {
@@ -94,13 +104,12 @@
 <body>
 
 <div class="calendar-container">
-    <h1>📅 לוח אירועים וחתונות שמורות </h1>
+    <h1>חתונות ושמחות ישיבת יסודות 💍🎉</h1>
     
-    <div id="loading" class="loading">טוען נתונים... אנא המתן.</div>
+    <div id="loading" class="loading">טוען נתונים... אנא ודא שהגיליון פורסם כראוי.</div>
     
     <div class="event-grid" id="events-grid" style="display: none;">
-        <div class="grid-header">תאריך</div>
-        <div class="grid-header">יום בשבוע</div>
+        <div class="grid-header">יום ותאריך</div>
         <div class="grid-header">שעה</div>
         <div class="grid-header">אירוע</div>
         <div class="grid-header">מיקום</div>
@@ -110,8 +119,8 @@
 </div>
 
 <script>
-    // ** הקישור הציבורי שסיפקת, מוטמע כאן **
-    const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/kU7TYAae8W0qojrbC0En8VwDHed5JM8RvmQDniIbWXk/pubhtml?gid=1437177848&single=true'; 
+    // הקישור המותאם לשם הגיליון "עדכון חתונות - יסודות"
+    const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1kU7TYAae8W0qojrbC0En8VwDHed5JM8RvmQDniIbWXk/gviz/tq?tqx=out:csv&sheet=עדכון חתונות - יסודות'; 
 
     document.addEventListener('DOMContentLoaded', fetchAndRenderEvents);
 
@@ -145,7 +154,7 @@
 
         } catch (error) {
             loading.style.display = 'none';
-            displayError(`שגיאה: ${error.message}. אנא ודא: 1. הגיליון פורסם. 2. אין בעיות CORS בשרת שלך (נדיר).`);
+            displayError(`שגיאה: ${error.message}. אנא ודא שהגיליון פורסם כראוי והקישור נכון.`);
             console.error(error);
         }
     }
@@ -162,51 +171,38 @@
     }
 
     /**
-     * פונקציה: ממירה תאריך ISO (YYYY-MM-DD) לפורמט עברי (יום/חודש/שנה).
-     */
-    function formatDateToHebrew(isoDate) {
-        try {
-            // יצירת אובייקט Date. שימוש בקיזוז של 12 שעות כדי למנוע טעות ביום עקב אזור זמן.
-            const date = new Date(isoDate + 'T12:00:00'); 
-            
-            // שימוש ב-toLocaleDateString עם הגדרות עבריות
-            return date.toLocaleDateString('he-IL', {
-                year: 'numeric',
-                month: 'numeric',
-                day: 'numeric'
-            });
-        } catch (e) {
-            return isoDate; // אם יש שגיאה, מחזירים את הטקסט המקורי
-        }
-    }
-
-    /**
      * מוסיף את הנתונים המעובדים ל-HTML Grid.
      */
     function renderGridData(data, grid) {
         data.forEach(row => {
-            // ודא שיש מספיק עמודות (6)
+            // הגיליון מכיל 6 עמודות, הלוח יציג 5
             if (row.length < 6) return; 
 
-            // סדר העמודות: [0:תאריך, 1:יום, 2:שעה, 3:אירוע, 4:מיקום, 5:תזמורת]
+            // סדר העמודות בגיליון: 
+            // [0:תאריך (A), 1:יום (B), 2:שעה (C), 3:אירוע (D), 4:מיקום (E), 5:תזמורת (F)]
             
-            // 1. תאריך (המרת ISO לעברית)
-            const hebrewDate = formatDateToHebrew(row[0]);
-            appendCell(grid, hebrewDate, 'event-date-cell'); 
+            // 1. יום + תאריך (איחוד עמודות A ו-B)
+            const dayOfWeek = row[1]; // יום
+            const dateText = row[0]; // תאריך (טקסט חופשי)
+
+            const combinedDateCell = document.createElement('div');
+            combinedDateCell.className = 'event-cell event-date-cell';
+            combinedDateCell.innerHTML = `
+                <span class="event-details-content event-day">${dayOfWeek}</span>
+                <span class="event-details-content">${dateText}</span>
+            `;
+            grid.appendChild(combinedDateCell);
             
-            // 2. יום
-            appendCell(grid, row[1]); 
-            
-            // 3. שעה
+            // 2. שעה (עמודה C, אינדקס 2)
             appendCell(grid, row[2]); 
             
-            // 4. אירוע
+            // 3. אירוע (עמודה D, אינדקס 3)
             appendCell(grid, row[3], 'event-name-cell'); 
             
-            // 5. מיקום
+            // 4. מיקום (עמודה E, אינדקס 4)
             appendCell(grid, row[4]); 
             
-            // 6. תזמורת/DJ
+            // 5. תזמורת/DJ (עמודה F, אינדקס 5)
             appendCell(grid, row[5]); 
         });
     }
