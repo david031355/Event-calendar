@@ -7,7 +7,7 @@
     
     <style>
         /* ---------------------------------- */
-        /* CSS לעיצוב הלוח */
+        /* CSS לעיצוב כללי ומרכוז */
         /* ---------------------------------- */
         body {
             font-family: 'Arial', sans-serif;
@@ -34,7 +34,7 @@
 
         .event-grid {
             display: grid;
-            /* 5 עמודות: יום+תאריך, שעה, אירוע, מיקום, DJ/תזמורת */
+            /* 5 עמודות: יום+תאריך (1.8), שעה (0.8), אירוע (2), מיקום (1.5), DJ/תזמורת (1.5) */
             grid-template-columns: 1.8fr 0.8fr 2fr 1.5fr 1.5fr; 
             gap: 1px; 
             border: 1px solid #ddd;
@@ -59,7 +59,7 @@
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            text-align: center;
+            text-align: center; /* מרכוז */
         }
         
         /* ---------------------------------- */
@@ -72,11 +72,12 @@
             color: #000;
         }
 
-        .highlight-event .event-name-cell {
+        .highlight-event.event-name-cell {
             color: #E65100;
             font-size: 1.3em;
         }
 
+        /* כדי שהגבול ייראה רציף בשורה */
         .event-grid .highlight-event {
             border-bottom: none !important; 
         }
@@ -86,8 +87,6 @@
         .event-grid .highlight-event:last-child {
              border-left: 1px solid #FF9800 !important;
         }
-        
-        /* ---------------------------------- */
         
         .event-date-cell {
             font-size: 1.1em;
@@ -135,9 +134,8 @@
 </div>
 
 <script>
-    // שם הגיליון שלך הוא 'Sheet1' (ברירת מחדל של גוגל).
-    // אם שינית אותו, עדכן את הקישור למטה
-    const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1kU7TYAae8W0qojrbC0En8VwDHed5JM8RvmQDniIbWXk/gviz/tq?tqx=out:csv&sheet=Sheet1'; 
+    // ** הקישור הסופי והנכון עם קידוד URL לשם הגיליון בעברית **
+    const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1kU7TYAae8W0qojrbC0En8VwDHed5JM8RvmQDniIbWXk/gviz/tq?tqx=out:csv&sheet=%D7%A2%D7%93%D7%9B%D7%95%D7%9F%20%D7%97%D7%AA%D7%95%D7%A0%D7%95%D7%AA%20-%20%D7%99%D7%A1%D7%95%D7%93%D7%95%D7%AA'; 
 
     document.addEventListener('DOMContentLoaded', fetchAndRenderEvents);
 
@@ -149,7 +147,8 @@
             const response = await fetch(GOOGLE_SHEET_CSV_URL);
             
             if (!response.ok) {
-                throw new Error(`שגיאה בטעינת נתונים: ${response.status} ${response.statusText}`);
+                // הצגת הקישור המלא בעת שגיאה כדי לבדוק אותו
+                throw new Error(`שגיאה בטעינת נתונים. נסה לגשת לקישור הבא בדפדפן: ${GOOGLE_SHEET_CSV_URL}`);
             }
             
             const csvText = await response.text();
@@ -159,11 +158,10 @@
             loading.style.display = 'none';
             grid.style.display = 'grid';
 
-            // הנתונים מתחילים מהשורה השנייה (אינדקס 1) כי השורה הראשונה היא כותרות
             if (data.length > 1) {
                 const eventRows = data.slice(1);
                 
-                // *** 1. שינוי: מיון לפי עמודה 1 (התאריך הלועזי) ***
+                // *** מיון לפי עמודה 1 (תאריך לועזי) ***
                 const sortedEvents = sortAndFilterEvents(eventRows); 
                 
                 let nextEventIndex = -1;
@@ -179,7 +177,7 @@
 
         } catch (error) {
             loading.style.display = 'none';
-            displayError(`שגיאה: ${error.message}. אנא ודא שהגיליון פורסם כראוי והקישור נכון.`);
+            displayError(`שגיאה: ${error.message}`);
             console.error(error);
         }
     }
@@ -192,6 +190,7 @@
         
         return lines.map(line => line.split(',').map(cell => {
             let cleanedCell = cell.trim();
+            // תיקון גרשיים כפולים
             if (cleanedCell.startsWith('"') && cleanedCell.endsWith('"')) {
                 cleanedCell = cleanedCell.substring(1, cleanedCell.length - 1);
             }
@@ -203,17 +202,17 @@
      * ממיין ומסנן את האירועים. משתמש בעמודה B (אינדקס 1) לצורך מיון.
      */
     function sortAndFilterEvents(events) {
+        // גודל הנתונים המקורי הוא 7 עמודות (אינדקס 0 עד 6) + שדות נוספים (H ואילך)
+        const ISO_DATE_INDEX = 1; 
+
         return events
-            // מוסיף אובייקט Date לכל שורה (באמצעות עמודה B, אינדקס 1)
             .map(row => {
-                const isoDate = row[1]; // <--- מיון לפי עמודה B
+                const isoDate = row[ISO_DATE_INDEX]; 
                 // אובייקט Date מאוחסן כעת באינדקס 8 (השדה ה-9)
                 const dateObj = new Date(isoDate + 'T12:00:00'); 
                 return [...row, dateObj]; 
             })
-            // מסנן אירועים שתאריכם אינו תקין
-            .filter(row => row[8] instanceof Date && !isNaN(row[8])) 
-            // ממיין מהתאריך הקרוב ביותר
+            .filter(row => row.length > 8 && row[8] instanceof Date && !isNaN(row[8])) 
             .sort((a, b) => a[8] - b[8]);
     }
     
@@ -225,7 +224,7 @@
         today.setHours(0, 0, 0, 0); 
 
         for (let i = 0; i < sortedEvents.length; i++) {
-            const eventDate = sortedEvents[i][8]; // משתמשים באינדקס 8
+            const eventDate = sortedEvents[i][8]; 
             
             if (eventDate >= today) {
                 return i;
@@ -241,9 +240,11 @@
         data.forEach((row, index) => {
             const isHighlighted = (index === nextEventIndex);
 
+            // סדר העמודות: [0:עברי, 1:ISO, 2:יום, 3:שעה, 4:אירוע, 5:מיקום, 6:תזמורת/DJ]
+            
             // 1. יום + תאריך עברי (איחוד עמודות A ו-C)
-            const dayOfWeek = row[2]; // יום (C)
-            const hebrewDateText = row[0]; // תאריך עברי (A)
+            const dayOfWeek = row[2]; // יום (C, אינדקס 2)
+            const hebrewDateText = row[0]; // תאריך עברי (A, אינדקס 0)
 
             const combinedDateCell = document.createElement('div');
             combinedDateCell.className = 'event-cell event-date-cell' + (isHighlighted ? ' highlight-event' : '');
