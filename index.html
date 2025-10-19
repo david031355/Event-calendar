@@ -3,17 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>חתונות ושמחות ישיבת יסודות</title>
+    <title>חתונות ושמחות ישיבת יסודות - בדיקת נתונים</title>
     
     <style>
-        /* ---------------------------------- */
-        /* CSS לעיצוב הלוח - שינוי ל-CENTER */
-        /* ---------------------------------- */
         body {
             font-family: 'Arial', sans-serif;
             background-color: #f4f7f6;
             padding: 20px;
-            /* הסרת direction: rtl; לטובת מרכוז יציב */
         }
 
         .calendar-container {
@@ -23,80 +19,38 @@
             border-radius: 12px;
             box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
             padding: 20px;
+            text-align: right;
         }
 
         h1 {
             color: #A0522D; 
-            text-align: center; /* מרכוז כותרת */
+            text-align: center; 
             margin-bottom: 30px;
             border-bottom: 2px solid #EEE;
             padding-bottom: 10px;
         }
-
-        .event-grid {
-            display: grid;
-            grid-template-columns: 1.8fr 0.8fr 2fr 1.5fr 1.5fr; 
-            gap: 1px; 
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            overflow: hidden;
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        th, td {
+            border: 1px solid #ccc;
+            padding: 10px;
+            text-align: right;
         }
 
-        .grid-header {
-            background-color: #F5DEB3; 
+        th {
+            background-color: #F5DEB3;
             font-weight: bold;
-            padding: 12px;
-            text-align: center; /* מרכוז כותרות עמודות */
-            color: #333;
-            border-bottom: 1px solid #ddd;
-        }
-        
-        .event-cell {
-            padding: 15px 10px;
-            border-bottom: 1px solid #eee;
-            background-color: #fff;
-            color: #333;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            text-align: center; /* מרכוז תוכן התאים */
-        }
-        
-        /* עיצוב שורות לסירוגין */
-        .event-grid > div:nth-child(10n + 6), 
-        .event-grid > div:nth-child(10n + 7),
-        .event-grid > div:nth-child(10n + 8),
-        .event-grid > div:nth-child(10n + 9),
-        .event-grid > div:nth-child(10n + 10) {
-            background-color: #fcf8f0; 
         }
 
-        .event-date-cell {
-            font-size: 1.1em;
-            color: #A0522D;
-            font-weight: 600;
-        }
-        
-        .event-details-content {
-            display: block;
-            line-height: 1.3;
-        }
-
-        .event-day {
-            font-weight: bold;
-            color: #000;
-        }
-        
-        .loading {
+        .loading, .error {
             text-align: center;
             padding: 20px;
-            color: #666;
             font-size: 1.2em;
-        }
-        
-        .error {
-            color: #D32F2F;
-            font-weight: bold;
         }
     </style>
 </head>
@@ -105,134 +59,72 @@
 <div class="calendar-container">
     <h1>חתונות ושמחות ישיבת יסודות 💍🎉</h1>
     
-    <div id="loading" class="loading">טוען נתונים... אנא ודא שהגיליון פורסם כראוי.</div>
-    
-    <div class="event-grid" id="events-grid" style="display: none;">
-        <div class="grid-header">יום ותאריך</div>
-        <div class="grid-header">שעה</div>
-        <div class="grid-header">אירוע</div>
-        <div class="grid-header">מיקום</div>
-        <div class="grid-header">תזמורת/DJ</div>
-    </div>
+    <div id="loading" class="loading">טוען נתונים...</div>
 </div>
 
 <script>
-    // הקישור המותאם לשם הגיליון "עדכון חתונות - יסודות"
-    const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1kU7TYAae8W0qojrbC0En8VwDHed5JM8RvmQDniIbWXk/gviz/tq?tqx=out:csv&sheet=עדכון חתונות - יסודות'; 
+    // הקישור הסופי והנכון (באמצעות GID ו-UTF-8)
+    const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1kU7TYAae8W0qojrbC0En8VwDHed5JM8RvmQDniIbWXk/gviz/tq?tqx=out:csv;charset=utf-8&gid=1437177848'; 
 
     document.addEventListener('DOMContentLoaded', fetchAndRenderEvents);
 
-    /**
-     * פונקציה ראשית הטוענת את הנתונים ומעבדת אותם.
-     */
     async function fetchAndRenderEvents() {
-        const grid = document.getElementById('events-grid');
         const loading = document.getElementById('loading');
         
         try {
             const response = await fetch(GOOGLE_SHEET_CSV_URL);
             
             if (!response.ok) {
-                throw new Error(`שגיאה בטעינת נתונים: ${response.status} ${response.statusText}`);
+                loading.textContent = `❌ שגיאה חמורה בגישה לקישור: קוד ${response.status}. ודא פרסום.`;
+                return;
             }
             
-            const csvText = await response.text();
-            
+            const blob = await response.blob();
+            const csvText = await blob.text();
+
             const data = parseCSV(csvText);
 
             loading.style.display = 'none';
-            grid.style.display = 'grid';
-
-            // הנתונים מתחילים מהשורה השנייה (אינדקס 1) כי השורה הראשונה היא כותרות
-            if (data.length > 1) {
-                renderGridData(data.slice(1), grid);
+            
+            // ** יצירת טבלת בדיקה פשוטה **
+            const container = document.querySelector('.calendar-container');
+            let html = '<h2>✅ נתונים גולמיים נטענו:</h2><table border="1" style="width:100%;"><tbody>';
+            
+            if (data.length > 0) {
+                data.forEach((row, index) => {
+                    html += '<tr>';
+                    // הדפסת כל תא בשורה
+                    row.forEach(cell => {
+                        // אם זו שורת הכותרות, השתמש ב-<th>
+                        html += index === 0 ? `<th>${cell}</th>` : `<td>${cell}</td>`;
+                    });
+                    html += '</tr>';
+                });
+                html += '</tbody>';
             } else {
-                displayError("אין נתונים בגיליון.");
+                 html += '<tr><td colspan="8">הגיליון ריק (או שרק הכותרת קיימת).</td></tr>';
             }
-
+            
+            html += '</table>';
+            container.innerHTML += html;
+            
         } catch (error) {
-            loading.style.display = 'none';
-            displayError(`שגיאה: ${error.message}. אנא ודא שהגיליון פורסם כראוי והקישור נכון.`);
+            loading.textContent = `❌ שגיאת JavaScript כללית: ${error.message}.`;
             console.error(error);
         }
     }
 
-    /**
-     * ממיר טקסט CSV למערך דו-ממדי, ומתקן את בעיית הגרשיים.
-     */
+    // פונקציית ניתוח CSV בסיסית
     function parseCSV(csv) {
-        // פיצול לפי שורות, הסרת סיומות קו (\r) ושורות ריקות
         const lines = csv.split('\n').map(line => line.replace(/\r/g, '')).filter(line => line.trim() !== '');
         
-        // פיצול כל שורה לפי פסיקים.
         return lines.map(line => line.split(',').map(cell => {
-            // 1. הסרת רווחים לבנים (trim)
             let cleanedCell = cell.trim();
-            
-            // 2. הסרת גרשיים הפותחים והסוגרים הראשיים (אם יש)
             if (cleanedCell.startsWith('"') && cleanedCell.endsWith('"')) {
                 cleanedCell = cleanedCell.substring(1, cleanedCell.length - 1);
             }
-            
-            // 3. תיקון גרשיים מוכפלים (כגון: "גן אירועים ""החממה""")
-            // מחליף "" ב-"
             return cleanedCell.replace(/""/g, '"');
         }));
-    }
-
-    /**
-     * מוסיף את הנתונים המעובדים ל-HTML Grid.
-     */
-    function renderGridData(data, grid) {
-        data.forEach(row => {
-            if (row.length < 6) return; 
-
-            // סדר העמודות: [0:תאריך (A), 1:יום (B), 2:שעה (C), 3:אירוע (D), 4:מיקום (E), 5:תזמורת (F)]
-            
-            // 1. יום + תאריך (איחוד עמודות A ו-B)
-            const dayOfWeek = row[1]; // יום
-            const dateText = row[0]; // תאריך (טקסט חופשי)
-
-            const combinedDateCell = document.createElement('div');
-            combinedDateCell.className = 'event-cell event-date-cell';
-            combinedDateCell.innerHTML = `
-                <span class="event-details-content event-day">${dayOfWeek}</span>
-                <span class="event-details-content">${dateText}</span>
-            `;
-            grid.appendChild(combinedDateCell);
-            
-            // 2. שעה (עמודה C, אינדקס 2)
-            appendCell(grid, row[2]); 
-            
-            // 3. אירוע (עמודה D, אינדקס 3)
-            appendCell(grid, row[3], 'event-name-cell'); 
-            
-            // 4. מיקום (עמודה E, אינדקס 4)
-            appendCell(grid, row[4]); 
-            
-            // 5. תזמורת/DJ (עמודה F, אינדקס 5)
-            appendCell(grid, row[5]); 
-        });
-    }
-
-    /**
-     * פונקציית עזר להוספת תא לגריד.
-     */
-    function appendCell(parentGrid, content, extraClass = '') {
-        const cell = document.createElement('div');
-        cell.className = 'event-cell ' + extraClass;
-        cell.textContent = content;
-        parentGrid.appendChild(cell);
-    }
-    
-    /**
-     * פונקציית עזר להצגת שגיאות.
-     */
-    function displayError(message) {
-        const container = document.getElementById('loading');
-        container.classList.add('error');
-        container.textContent = message;
-        container.style.display = 'block';
     }
 </script>
 
