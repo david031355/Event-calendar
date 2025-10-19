@@ -26,7 +26,7 @@
 
         h1 {
             color: #A0522D; 
-            text-align: center; 
+            text-align: center;
             margin-bottom: 30px;
             border-bottom: 2px solid #EEE;
             padding-bottom: 10px;
@@ -34,7 +34,6 @@
 
         .event-grid {
             display: grid;
-            /* 5 עמודות: יום+תאריך, שעה, אירוע, מיקום, תזמורת/DJ */
             grid-template-columns: 1.8fr 0.8fr 2fr 1.5fr 1.5fr; 
             gap: 1px; 
             border: 1px solid #ddd;
@@ -46,7 +45,7 @@
             background-color: #F5DEB3; 
             font-weight: bold;
             padding: 12px;
-            text-align: center;
+            text-align: center; 
             color: #333;
             border-bottom: 1px solid #ddd;
         }
@@ -62,21 +61,23 @@
             text-align: center;
         }
         
+        /* עיצוב שורות לסירוגין - יוסר עקב ההדגשה */
+        
         /* ---------------------------------- */
         /* עיצוב מיוחד לאירוע הקרוב */
         /* ---------------------------------- */
         .highlight-event {
-            background-color: #FFF3E0; 
+            background-color: #FFF3E0; /* צבע רקע בהיר להדגשה */
             font-weight: bold;
-            border: 2px solid #FF9800 !important; 
+            border: 2px solid #FF9800 !important; /* גבול כתום בולט */
             color: #000;
         }
 
         .highlight-event .event-name-cell {
-            color: #E65100;
+            color: #E65100; /* צבע כהה יותר לשם האירוע המודגש */
             font-size: 1.3em;
         }
-
+        /* ודא שההדגשה תכסה את כל התאים בשורה */
         .event-grid .highlight-event {
             border-bottom: none !important; 
         }
@@ -135,7 +136,6 @@
 </div>
 
 <script>
-    // הקישור נשאר זהה
     const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1kU7TYAae8W0qojrbC0En8VwDHed5JM8RvmQDniIbWXk/gviz/tq?tqx=out:csv&sheet=עדכון חתונות - יסודות'; 
 
     document.addEventListener('DOMContentLoaded', fetchAndRenderEvents);
@@ -159,18 +159,19 @@
             grid.style.display = 'grid';
 
             if (data.length > 1) {
+                // 1. מיון וסינון האירועים לפני הצגתם
                 const eventRows = data.slice(1);
                 
-                // *** השינוי המהותי: מיון לפי עמודה 1 (תאריך לועזי) ***
+                // הנתונים בגיליון מכילים תאריך (ISO) בעמודה הראשונה (אינדקס 0)
                 const sortedEvents = sortAndFilterEvents(eventRows); 
                 
+                // 2. מציאת האירוע הקרוב ביותר
                 let nextEventIndex = -1;
                 if (sortedEvents.length > 0) {
-                     // איתור האירוע הקרוב
                      nextEventIndex = findNextEventIndex(sortedEvents);
                 }
 
-                // הצגת הנתונים
+                // 3. הצגת הנתונים עם הדגשה
                 renderGridData(sortedEvents, grid, nextEventIndex);
 
             } else {
@@ -184,9 +185,6 @@
         }
     }
 
-    /**
-     * ממיר טקסט CSV למערך דו-ממדי, ומתקן את בעיית הגרשיים.
-     */
     function parseCSV(csv) {
         const lines = csv.split('\n').map(line => line.replace(/\r/g, '')).filter(line => line.trim() !== '');
         
@@ -200,26 +198,30 @@
     }
     
     /**
-     * ממיין ומסנן את האירועים, ומשתמש בעמודה B (אינדקס 1) לצורך מיון.
+     * ממיין ומסנן את האירועים, ומוסיף שדה תאריך אמיתי (Date Object) לצורך השוואה.
+     * @param {Array<Array<string>>} events - מערך הנתונים מהגיליון.
+     * @returns {Array<Array<any>>} - מערך אירועים ממוין, עם שדה תאריך אמיתי.
      */
     function sortAndFilterEvents(events) {
         return events
-            // מוסיף אובייקט Date לכל שורה (באמצעות עמודה B, אינדקס 1)
+            // מוסיף אובייקט Date לכל שורה (כדי שנוכל למיין)
             .map(row => {
-                const isoDate = row[1]; // <--- משתמשים באינדקס 1 למיון
-                // משתמשים ב-T12:00:00 כדי למנוע בעיות אזור זמן
+                // מניח שפורמט התאריך הוא עדיין YYYY-MM-DD
+                const isoDate = row[0]; 
+                // משתמש ב-T12:00:00 כדי למנוע בעיות אזור זמן
                 const dateObj = new Date(isoDate + 'T12:00:00'); 
-                // אובייקט Date מאוחסן כעת באינדקס 7 (השדה ה-8)
                 return [...row, dateObj]; 
             })
-            // מסנן אירועים שתאריכם אינו תקין
-            .filter(row => row[7] instanceof Date && !isNaN(row[7])) 
-            // ממיין מהתאריך הקרוב ביותר
-            .sort((a, b) => a[7] - b[7]);
+            // מסנן אירועים שתאריכם אינו תקין (כגון שורות ריקות בטעות)
+            .filter(row => row[6] instanceof Date && !isNaN(row[6]))
+            // ממיין מהתאריך הקרוב ביותר (הקטן ביותר)
+            .sort((a, b) => a[6] - b[6]);
     }
     
     /**
      * מוצא את האירוע הקרוב שטרם עבר.
+     * @param {Array<Array<any>>} sortedEvents - מערך אירועים ממוין.
+     * @returns {number} - האינדקס של האירוע הקרוב במערך.
      */
     function findNextEventIndex(sortedEvents) {
         const today = new Date();
@@ -227,13 +229,14 @@
         today.setHours(0, 0, 0, 0); 
 
         for (let i = 0; i < sortedEvents.length; i++) {
-            const eventDate = sortedEvents[i][7]; // משתמשים באינדקס 7
+            const eventDate = sortedEvents[i][6]; // זהו אובייקט ה-Date שהוספנו
             
+            // משווים: אם תאריך האירוע גדול או שווה להיום (עדיין לא עבר)
             if (eventDate >= today) {
                 return i;
             }
         }
-        return -1;
+        return -1; // לא נמצא אירוע קרוב (כולם עברו)
     }
 
     /**
@@ -241,34 +244,32 @@
      */
     function renderGridData(data, grid, nextEventIndex) {
         data.forEach((row, index) => {
+            // האם זהו האירוע הקרוב?
             const isHighlighted = (index === nextEventIndex);
 
-            // סדר העמודות החדש: 
-            // [0:עברי, 1:ISO, 2:יום, 3:שעה, 4:אירוע, 5:מיקום, 6:תזמורת/DJ]
-            
-            // 1. יום + תאריך עברי (איחוד עמודות A ו-C)
-            const dayOfWeek = row[2]; // <--- יום (אינדקס 2)
-            const hebrewDateText = row[0]; // <--- תאריך עברי (אינדקס 0)
+            // 1. יום + תאריך (איחוד עמודות A ו-B)
+            const dayOfWeek = row[1]; // יום
+            const dateText = row[0]; // תאריך (טקסט חופשי)
 
             const combinedDateCell = document.createElement('div');
             combinedDateCell.className = 'event-cell event-date-cell' + (isHighlighted ? ' highlight-event' : '');
             combinedDateCell.innerHTML = `
                 <span class="event-details-content event-day">${dayOfWeek}</span>
-                <span class="event-details-content">${hebrewDateText}</span>
+                <span class="event-details-content">${dateText}</span>
             `;
             grid.appendChild(combinedDateCell);
             
-            // 2. שעה (אינדקס 3)
-            appendCell(grid, row[3], isHighlighted); 
+            // 2. שעה (אינדקס 2)
+            appendCell(grid, row[2], isHighlighted); 
             
-            // 3. אירוע (אינדקס 4)
-            appendCell(grid, row[4], isHighlighted, 'event-name-cell'); 
+            // 3. אירוע (אינדקס 3)
+            appendCell(grid, row[3], isHighlighted, 'event-name-cell'); 
             
-            // 4. מיקום (אינדקס 5)
+            // 4. מיקום (אינדקס 4)
+            appendCell(grid, row[4], isHighlighted); 
+            
+            // 5. תזמורת/DJ (אינדקס 5)
             appendCell(grid, row[5], isHighlighted); 
-            
-            // 5. תזמורת/DJ (אינדקס 6)
-            appendCell(grid, row[6], isHighlighted); 
         });
     }
 
@@ -287,12 +288,4 @@
     }
     
     function displayError(message) {
-        const container = document.getElementById('loading');
-        container.classList.add('error');
-        container.textContent = message;
-        container.style.display = 'block';
-    }
-</script>
-
-</body>
-</html>
+        const container = document
