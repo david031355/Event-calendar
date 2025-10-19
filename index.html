@@ -66,9 +66,9 @@
         /* עיצוב מיוחד לאירוע הקרוב */
         /* ---------------------------------- */
         .highlight-event {
-            background-color: #FFF3E0; /* רקע כתום בהיר */
+            background-color: #FFF3E0; 
             font-weight: bold;
-            border: 2px solid #FF9800 !important; /* גבול כתום בולט */
+            border: 2px solid #FF9800 !important; 
             color: #000;
         }
 
@@ -147,11 +147,9 @@
             const response = await fetch(GOOGLE_SHEET_CSV_URL);
             
             if (!response.ok) {
-                // הצגת הודעת שגיאה מפורטת
                 throw new Error(`שגיאה בטעינת נתונים (קוד ${response.status}).`);
             }
             
-            // שימוש ב-Blob כדי להבטיח קריאת UTF-8 נכונה
             const blob = await response.blob();
             const csvText = await blob.text();
 
@@ -185,10 +183,23 @@
     }
 
     /**
+     * ממיר תאריך מהפורמט הישראלי (DD/MM/YYYY) לפורמט ISO (YYYY-MM-DD) לצורך יצירת אובייקט Date.
+     */
+    function convertDMYtoYMD(dateStr) {
+        if (!dateStr || dateStr.indexOf('/') === -1) return null;
+        const parts = dateStr.split('/');
+        // חלקים: [יום, חודש, שנה]
+        if (parts.length === 3) {
+            // מחזיר: שנה-חודש-יום
+            return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+        }
+        return null;
+    }
+
+    /**
      * ממיר טקסט CSV למערך דו-ממדי, ומתקן את בעיית הגרשיים.
      */
     function parseCSV(csv) {
-        // מזהה שורות חדשות ומנקה שורות ריקות
         const lines = csv.split('\n').map(line => line.replace(/\r/g, '')).filter(line => line.trim() !== '');
         
         return lines.map(line => line.split(',').map(cell => {
@@ -202,19 +213,24 @@
     }
     
     /**
-     * ממיין ומסנן את האירועים. משתמש בעמודה B (אינדקס 1) לצורך מיון.
+     * ממיין ומסנן את האירועים. משתמש בעמודה B (אינדקס 1) לצורך מיון, לאחר המרה.
      */
     function sortAndFilterEvents(events) {
-        const ISO_DATE_INDEX = 1; 
+        const ISO_DATE_INDEX = 1; // עמודה B (התאריך לועזי)
 
         return events
             .map(row => {
-                const isoDate = row[ISO_DATE_INDEX]; 
+                const rawDate = row[ISO_DATE_INDEX]; 
+                
+                // *** התיקון הקריטי: המרת הפורמט D/M/Y ל-Y-M-D ***
+                const isoDate = convertDMYtoYMD(rawDate); 
+                
+                const dateObj = isoDate ? new Date(isoDate + 'T12:00:00') : null; 
+                
                 // אובייקט Date מאוחסן כעת באינדקס 8 (השדה ה-9)
-                const dateObj = new Date(isoDate + 'T12:00:00'); 
                 return [...row, dateObj]; 
             })
-            // בודק אם השורה מספיק ארוכה (לפחות 7 נתונים קריאים + ה-Date Object החדש)
+            // בודק שהשורה מכילה נתונים תקינים למיון
             .filter(row => row.length > 7 && row[8] instanceof Date && !isNaN(row[8])) 
             .sort((a, b) => a[8] - b[8]);
     }
@@ -224,16 +240,16 @@
      */
     function findNextEventIndex(sortedEvents) {
         const today = new Date();
-        today.setHours(0, 0, 0, 0); // מאפס את הזמן
+        today.setHours(0, 0, 0, 0); 
 
         for (let i = 0; i < sortedEvents.length; i++) {
-            const eventDate = sortedEvents[i][8]; // התאריך המחושב
+            const eventDate = sortedEvents[i][8]; 
             
             if (eventDate >= today) {
                 return i;
             }
         }
-        return -1; // כולם עברו
+        return -1;
     }
 
     /**
