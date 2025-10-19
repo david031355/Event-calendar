@@ -34,7 +34,7 @@
 
         .event-grid {
             display: grid;
-            /* 5 עמודות: יום+תאריך (1.8), שעה (0.8), אירוע (2), מיקום (1.5), DJ/תזמורת (1.5) */
+            /* 5 עמודות: יום+תאריך, שעה, אירוע, מיקום, DJ/תזמורת */
             grid-template-columns: 1.8fr 0.8fr 2fr 1.5fr 1.5fr; 
             gap: 1px; 
             border: 1px solid #ddd;
@@ -66,9 +66,9 @@
         /* עיצוב מיוחד לאירוע הקרוב */
         /* ---------------------------------- */
         .highlight-event {
-            background-color: #FFF3E0; 
+            background-color: #FFF3E0; /* רקע כתום בהיר */
             font-weight: bold;
-            border: 2px solid #FF9800 !important; 
+            border: 2px solid #FF9800 !important; /* גבול כתום בולט */
             color: #000;
         }
 
@@ -134,8 +134,8 @@
 </div>
 
 <script>
-    // ** הקישור הסופי והנכון עם קידוד URL לשם הגיליון בעברית **
-    const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1kU7TYAae8W0qojrbC0En8VwDHed5JM8RvmQDniIbWXk/gviz/tq?tqx=out:csv&sheet=%D7%A2%D7%93%D7%9B%D7%95%D7%9F%20%D7%97%D7%AA%D7%95%D7%A0%D7%95%D7%AA%20-%20%D7%99%D7%A1%D7%95%D7%93%D7%95%D7%AA'; 
+    // ** הקישור הסופי והנכון (באמצעות GID ו-UTF-8) **
+    const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1kU7TYAae8W0qojrbC0En8VwDHed5JM8RvmQDniIbWXk/gviz/tq?tqx=out:csv;charset=utf-8&gid=1437177848'; 
 
     document.addEventListener('DOMContentLoaded', fetchAndRenderEvents);
 
@@ -147,12 +147,14 @@
             const response = await fetch(GOOGLE_SHEET_CSV_URL);
             
             if (!response.ok) {
-                // הצגת הקישור המלא בעת שגיאה כדי לבדוק אותו
-                throw new Error(`שגיאה בטעינת נתונים. נסה לגשת לקישור הבא בדפדפן: ${GOOGLE_SHEET_CSV_URL}`);
+                // הצגת הודעת שגיאה מפורטת
+                throw new Error(`שגיאה בטעינת נתונים (קוד ${response.status}).`);
             }
             
-            const csvText = await response.text();
-            
+            // שימוש ב-Blob כדי להבטיח קריאת UTF-8 נכונה
+            const blob = await response.blob();
+            const csvText = await blob.text();
+
             const data = parseCSV(csvText);
 
             loading.style.display = 'none';
@@ -161,7 +163,7 @@
             if (data.length > 1) {
                 const eventRows = data.slice(1);
                 
-                // *** מיון לפי עמודה 1 (תאריך לועזי) ***
+                // מיון לפי עמודה 1 (תאריך לועזי)
                 const sortedEvents = sortAndFilterEvents(eventRows); 
                 
                 let nextEventIndex = -1;
@@ -186,6 +188,7 @@
      * ממיר טקסט CSV למערך דו-ממדי, ומתקן את בעיית הגרשיים.
      */
     function parseCSV(csv) {
+        // מזהה שורות חדשות ומנקה שורות ריקות
         const lines = csv.split('\n').map(line => line.replace(/\r/g, '')).filter(line => line.trim() !== '');
         
         return lines.map(line => line.split(',').map(cell => {
@@ -202,7 +205,6 @@
      * ממיין ומסנן את האירועים. משתמש בעמודה B (אינדקס 1) לצורך מיון.
      */
     function sortAndFilterEvents(events) {
-        // גודל הנתונים המקורי הוא 7 עמודות (אינדקס 0 עד 6) + שדות נוספים (H ואילך)
         const ISO_DATE_INDEX = 1; 
 
         return events
@@ -212,7 +214,8 @@
                 const dateObj = new Date(isoDate + 'T12:00:00'); 
                 return [...row, dateObj]; 
             })
-            .filter(row => row.length > 8 && row[8] instanceof Date && !isNaN(row[8])) 
+            // בודק אם השורה מספיק ארוכה (לפחות 7 נתונים קריאים + ה-Date Object החדש)
+            .filter(row => row.length > 7 && row[8] instanceof Date && !isNaN(row[8])) 
             .sort((a, b) => a[8] - b[8]);
     }
     
@@ -221,16 +224,16 @@
      */
     function findNextEventIndex(sortedEvents) {
         const today = new Date();
-        today.setHours(0, 0, 0, 0); 
+        today.setHours(0, 0, 0, 0); // מאפס את הזמן
 
         for (let i = 0; i < sortedEvents.length; i++) {
-            const eventDate = sortedEvents[i][8]; 
+            const eventDate = sortedEvents[i][8]; // התאריך המחושב
             
             if (eventDate >= today) {
                 return i;
             }
         }
-        return -1;
+        return -1; // כולם עברו
     }
 
     /**
@@ -240,8 +243,6 @@
         data.forEach((row, index) => {
             const isHighlighted = (index === nextEventIndex);
 
-            // סדר העמודות: [0:עברי, 1:ISO, 2:יום, 3:שעה, 4:אירוע, 5:מיקום, 6:תזמורת/DJ]
-            
             // 1. יום + תאריך עברי (איחוד עמודות A ו-C)
             const dayOfWeek = row[2]; // יום (C, אינדקס 2)
             const hebrewDateText = row[0]; // תאריך עברי (A, אינדקס 0)
