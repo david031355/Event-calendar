@@ -34,7 +34,7 @@
 
         .event-grid {
             display: grid;
-            /* 5 עמודות: יום+תאריך, שעה, אירוע, מיקום, תזמורת/DJ */
+            /* 5 עמודות: יום+תאריך, שעה, אירוע, מיקום, DJ/תזמורת */
             grid-template-columns: 1.8fr 0.8fr 2fr 1.5fr 1.5fr; 
             gap: 1px; 
             border: 1px solid #ddd;
@@ -126,7 +126,7 @@
     <div id="loading" class="loading">טוען נתונים... אנא ודא שהגיליון פורסם כראוי.</div>
     
     <div class="event-grid" id="events-grid" style="display: none;">
-        <div class="grid-header">יום ותאריך</div>
+        <div class="grid-header">תאריך</div>
         <div class="grid-header">שעה</div>
         <div class="grid-header">אירוע</div>
         <div class="grid-header">מיקום</div>
@@ -135,8 +135,9 @@
 </div>
 
 <script>
-    // הקישור נשאר זהה
-    const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1kU7TYAae8W0qojrbC0En8VwDHed5JM8RvmQDniIbWXk/gviz/tq?tqx=out:csv&sheet=עדכון חתונות - יסודות'; 
+    // שם הגיליון שלך הוא 'Sheet1' (ברירת מחדל של גוגל).
+    // אם שינית אותו, עדכן את הקישור למטה
+    const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1kU7TYAae8W0qojrbC0En8VwDHed5JM8RvmQDniIbWXk/gviz/tq?tqx=out:csv&sheet=Sheet1'; 
 
     document.addEventListener('DOMContentLoaded', fetchAndRenderEvents);
 
@@ -158,19 +159,18 @@
             loading.style.display = 'none';
             grid.style.display = 'grid';
 
+            // הנתונים מתחילים מהשורה השנייה (אינדקס 1) כי השורה הראשונה היא כותרות
             if (data.length > 1) {
                 const eventRows = data.slice(1);
                 
-                // *** השינוי המהותי: מיון לפי עמודה 1 (תאריך לועזי) ***
+                // *** 1. שינוי: מיון לפי עמודה 1 (התאריך הלועזי) ***
                 const sortedEvents = sortAndFilterEvents(eventRows); 
                 
                 let nextEventIndex = -1;
                 if (sortedEvents.length > 0) {
-                     // איתור האירוע הקרוב
                      nextEventIndex = findNextEventIndex(sortedEvents);
                 }
 
-                // הצגת הנתונים
                 renderGridData(sortedEvents, grid, nextEventIndex);
 
             } else {
@@ -200,22 +200,21 @@
     }
     
     /**
-     * ממיין ומסנן את האירועים, ומשתמש בעמודה B (אינדקס 1) לצורך מיון.
+     * ממיין ומסנן את האירועים. משתמש בעמודה B (אינדקס 1) לצורך מיון.
      */
     function sortAndFilterEvents(events) {
         return events
             // מוסיף אובייקט Date לכל שורה (באמצעות עמודה B, אינדקס 1)
             .map(row => {
-                const isoDate = row[1]; // <--- משתמשים באינדקס 1 למיון
-                // משתמשים ב-T12:00:00 כדי למנוע בעיות אזור זמן
+                const isoDate = row[1]; // <--- מיון לפי עמודה B
+                // אובייקט Date מאוחסן כעת באינדקס 8 (השדה ה-9)
                 const dateObj = new Date(isoDate + 'T12:00:00'); 
-                // אובייקט Date מאוחסן כעת באינדקס 7 (השדה ה-8)
                 return [...row, dateObj]; 
             })
             // מסנן אירועים שתאריכם אינו תקין
-            .filter(row => row[7] instanceof Date && !isNaN(row[7])) 
+            .filter(row => row[8] instanceof Date && !isNaN(row[8])) 
             // ממיין מהתאריך הקרוב ביותר
-            .sort((a, b) => a[7] - b[7]);
+            .sort((a, b) => a[8] - b[8]);
     }
     
     /**
@@ -223,11 +222,10 @@
      */
     function findNextEventIndex(sortedEvents) {
         const today = new Date();
-        // מאפס את הזמן של היום כדי להשוות רק תאריכים
         today.setHours(0, 0, 0, 0); 
 
         for (let i = 0; i < sortedEvents.length; i++) {
-            const eventDate = sortedEvents[i][7]; // משתמשים באינדקס 7
+            const eventDate = sortedEvents[i][8]; // משתמשים באינדקס 8
             
             if (eventDate >= today) {
                 return i;
@@ -243,12 +241,9 @@
         data.forEach((row, index) => {
             const isHighlighted = (index === nextEventIndex);
 
-            // סדר העמודות החדש: 
-            // [0:עברי, 1:ISO, 2:יום, 3:שעה, 4:אירוע, 5:מיקום, 6:תזמורת/DJ]
-            
             // 1. יום + תאריך עברי (איחוד עמודות A ו-C)
-            const dayOfWeek = row[2]; // <--- יום (אינדקס 2)
-            const hebrewDateText = row[0]; // <--- תאריך עברי (אינדקס 0)
+            const dayOfWeek = row[2]; // יום (C)
+            const hebrewDateText = row[0]; // תאריך עברי (A)
 
             const combinedDateCell = document.createElement('div');
             combinedDateCell.className = 'event-cell event-date-cell' + (isHighlighted ? ' highlight-event' : '');
@@ -258,16 +253,16 @@
             `;
             grid.appendChild(combinedDateCell);
             
-            // 2. שעה (אינדקס 3)
+            // 2. שעה (D, אינדקס 3)
             appendCell(grid, row[3], isHighlighted); 
             
-            // 3. אירוע (אינדקס 4)
+            // 3. אירוע (E, אינדקס 4)
             appendCell(grid, row[4], isHighlighted, 'event-name-cell'); 
             
-            // 4. מיקום (אינדקס 5)
+            // 4. מיקום (F, אינדקס 5)
             appendCell(grid, row[5], isHighlighted); 
             
-            // 5. תזמורת/DJ (אינדקס 6)
+            // 5. DJ/תזמורת (G, אינדקס 6)
             appendCell(grid, row[6], isHighlighted); 
         });
     }
