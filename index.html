@@ -7,13 +7,13 @@
     
     <style>
         /* ---------------------------------- */
-        /* CSS לעיצוב הלוח */
+        /* CSS לעיצוב הלוח - שינוי ל-CENTER */
         /* ---------------------------------- */
         body {
             font-family: 'Arial', sans-serif;
             background-color: #f4f7f6;
             padding: 20px;
-            text-align: right;
+            /* הסרת direction: rtl; לטובת מרכוז יציב */
         }
 
         .calendar-container {
@@ -27,7 +27,7 @@
 
         h1 {
             color: #A0522D; 
-            text-align: center;
+            text-align: center; /* מרכוז כותרת */
             margin-bottom: 30px;
             border-bottom: 2px solid #EEE;
             padding-bottom: 10px;
@@ -35,7 +35,6 @@
 
         .event-grid {
             display: grid;
-            /* 5 עמודות חדשות: יום+תאריך, שעה, אירוע, מיקום, תזמורת/DJ */
             grid-template-columns: 1.8fr 0.8fr 2fr 1.5fr 1.5fr; 
             gap: 1px; 
             border: 1px solid #ddd;
@@ -47,7 +46,7 @@
             background-color: #F5DEB3; 
             font-weight: bold;
             padding: 12px;
-            text-align: center;
+            text-align: center; /* מרכוז כותרות עמודות */
             color: #333;
             border-bottom: 1px solid #ddd;
         }
@@ -60,10 +59,10 @@
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            text-align: center; /* מרכוז תוכן התאים */
         }
         
         /* עיצוב שורות לסירוגין */
-        /* מתאים ל-5 עמודות */
         .event-grid > div:nth-child(10n + 6), 
         .event-grid > div:nth-child(10n + 7),
         .event-grid > div:nth-child(10n + 8),
@@ -114,8 +113,7 @@
         <div class="grid-header">אירוע</div>
         <div class="grid-header">מיקום</div>
         <div class="grid-header">תזמורת/DJ</div>
-        
-        </div>
+    </div>
 </div>
 
 <script>
@@ -160,14 +158,26 @@
     }
 
     /**
-     * ממיר טקסט CSV למערך דו-ממדי.
+     * ממיר טקסט CSV למערך דו-ממדי, ומתקן את בעיית הגרשיים.
      */
     function parseCSV(csv) {
         // פיצול לפי שורות, הסרת סיומות קו (\r) ושורות ריקות
         const lines = csv.split('\n').map(line => line.replace(/\r/g, '')).filter(line => line.trim() !== '');
         
-        // פיצול כל שורה לפי פסיקים, והסרת גרשיים כפולים מסביב לטקסט
-        return lines.map(line => line.split(',').map(cell => cell.trim().replace(/^"|"$/g, '')));
+        // פיצול כל שורה לפי פסיקים.
+        return lines.map(line => line.split(',').map(cell => {
+            // 1. הסרת רווחים לבנים (trim)
+            let cleanedCell = cell.trim();
+            
+            // 2. הסרת גרשיים הפותחים והסוגרים הראשיים (אם יש)
+            if (cleanedCell.startsWith('"') && cleanedCell.endsWith('"')) {
+                cleanedCell = cleanedCell.substring(1, cleanedCell.length - 1);
+            }
+            
+            // 3. תיקון גרשיים מוכפלים (כגון: "גן אירועים ""החממה""")
+            // מחליף "" ב-"
+            return cleanedCell.replace(/""/g, '"');
+        }));
     }
 
     /**
@@ -175,11 +185,9 @@
      */
     function renderGridData(data, grid) {
         data.forEach(row => {
-            // הגיליון מכיל 6 עמודות, הלוח יציג 5
             if (row.length < 6) return; 
 
-            // סדר העמודות בגיליון: 
-            // [0:תאריך (A), 1:יום (B), 2:שעה (C), 3:אירוע (D), 4:מיקום (E), 5:תזמורת (F)]
+            // סדר העמודות: [0:תאריך (A), 1:יום (B), 2:שעה (C), 3:אירוע (D), 4:מיקום (E), 5:תזמורת (F)]
             
             // 1. יום + תאריך (איחוד עמודות A ו-B)
             const dayOfWeek = row[1]; // יום
