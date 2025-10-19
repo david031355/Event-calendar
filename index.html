@@ -185,11 +185,16 @@
     
     /**
      * ממיר תאריך מהפורמט הישראלי (DD/MM/YYYY) לפורמט ISO (YYYY-MM-DD) לצורך יצירת אובייקט Date.
+     * הפונקציה מנקה תווים לא נחוצים.
      */
     function convertDMYtoYMD(dateStr) {
-        if (!dateStr || dateStr.indexOf('/') === -1) return null;
-        const parts = dateStr.split('/');
-        // חלקים: [יום, חודש, שנה]
+        if (!dateStr) return null;
+        
+        // מנקה את המחרוזת מכל תו שאינו מספר או לוכסן
+        const cleanStr = dateStr.replace(/[^\d/]/g, ''); 
+
+        const parts = cleanStr.split('/');
+        
         if (parts.length === 3) {
             // מחזיר: שנה-חודש-יום
             return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
@@ -222,15 +227,14 @@
             .map(row => {
                 const rawDate = row[ISO_DATE_INDEX]; 
                 
-                // התיקון הקריטי: המרת הפורמט D/M/Y ל-Y-M-D
-                const isoDate = convertDMYtoYMD(rawDate); 
+                const isoDate = convertDMYtoYMD(rawDate); // המרה
                 
                 const dateObj = isoDate ? new Date(isoDate + 'T12:00:00') : null; 
                 
                 // אובייקט Date מאוחסן כעת באינדקס 8 (השדה ה-9)
                 return [...row, dateObj]; 
             })
-            // בודק שהשורה מכילה נתונים תקינים למיון
+            // ודא שהתאריך נותח בהצלחה
             .filter(row => row.length > 7 && row[8] instanceof Date && !isNaN(row[8])) 
             .sort((a, b) => a[8] - b[8]);
     }
