@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>לוח אירועים - קריאה ישירה מ-Google Sheets (עברית)</title>
+    
+    <style>
+        /* ---------------------------------- */
+        /* CSS לעיצוב הלוח */
+        /* ---------------------------------- */
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f7f6;
+            padding: 20px;
+            text-align: right;
+        }
+
+        .calendar-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+
+        h1 {
+            color: #A0522D; 
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #EEE;
+            padding-bottom: 10px;
+        }
+
+        .event-grid {
+            display: grid;
+            /* 6 עמודות: תאריך, יום, שעה, אירוע, מיקום, תזמורת */
+            grid-template-columns: 1fr 0.8fr 0.8fr 2fr 1.5fr 1.5fr; 
+            gap: 1px; 
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .grid-header {
+            background-color: #F5DEB3; 
+            font-weight: bold;
+            padding: 12px;
+            text-align: center;
+            color: #333;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .event-cell {
+            padding: 15px 10px;
+            border-bottom: 1px solid #eee;
+            background-color: #fff;
+            color: #333;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        /* עיצוב שורות לסירוגין */
+        .event-grid > div:nth-child(12n + 7), 
+        .event-grid > div:nth-child(12n + 8),
+        .event-grid > div:nth-child(12n + 9),
+        .event-grid > div:nth-child(12n + 10),
+        .event-grid > div:nth-child(12n + 11),
+        .event-grid > div:nth-child(12n + 12) {
+            background-color: #fcf8f0; 
+        }
+
+        .event-date-cell {
+            font-size: 1.1em;
+            color: #A0522D;
+            font-weight: 600;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 1.2em;
+        }
+        
+        .error {
+            color: #D32F2F;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div class="calendar-container">
+    <h1>📅 לוח אירועים וחתונות שמורות (בתצוגה עברית)</h1>
+    
+    <div id="loading" class="loading">טוען נתונים... אנא המתן.</div>
+    
+    <div class="event-grid" id="events-grid" style="display: none;">
+        <div class="grid-header">תאריך</div>
+        <div class="grid-header">יום בשבוע</div>
+        <div class="grid-header">שעה</div>
+        <div class="grid-header">אירוע</div>
+        <div class="grid-header">מיקום</div>
+        <div class="grid-header">תזמורת/DJ</div>
+        
+        </div>
+</div>
+
+<script>
+    // ** הקישור הציבורי שסיפקת, מוטמע כאן **
+    const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSLxxs5vG35JOWxWBEfdEP3OlisyVFuiY4XbEerX-vpHWLCF_PecnyImt7Ttf0Yrt3iuPzH0YggBpnu/pubhtml?gid=1437177848&single=true'; 
+
+    document.addEventListener('DOMContentLoaded', fetchAndRenderEvents);
+
+    /**
+     * פונקציה ראשית הטוענת את הנתונים ומעבדת אותם.
+     */
+    async function fetchAndRenderEvents() {
+        const grid = document.getElementById('events-grid');
+        const loading = document.getElementById('loading');
+        
+        try {
+            const response = await fetch(GOOGLE_SHEET_CSV_URL);
+            
+            if (!response.ok) {
+                throw new Error(`שגיאה בטעינת נתונים: ${response.status} ${response.statusText}`);
+            }
+            
+            const csvText = await response.text();
+            
+            const data = parseCSV(csvText);
+
+            loading.style.display = 'none';
+            grid.style.display = 'grid';
+
+            // הנתונים מתחילים מהשורה השנייה (אינדקס 1) כי השורה הראשונה היא כותרות
+            if (data.length > 1) {
+                renderGridData(data.slice(1), grid);
+            } else {
+                displayError("אין נתונים בגיליון.");
+            }
+
+        } catch (error) {
+            loading.style.display = 'none';
+            displayError(`שגיאה: ${error.message}. אנא ודא: 1. הגיליון פורסם. 2. אין בעיות CORS בשרת שלך (נדיר).`);
+            console.error(error);
+        }
+    }
+
+    /**
+     * ממיר טקסט CSV למערך דו-ממדי.
+     */
+    function parseCSV(csv) {
+        // פיצול לפי שורות, הסרת סיומות קו (\r) ושורות ריקות
+        const lines = csv.split('\n').map(line => line.replace(/\r/g, '')).filter(line => line.trim() !== '');
+        
+        // פיצול כל שורה לפי פסיקים, והסרת גרשיים כפולים מסביב לטקסט
+        return lines.map(line => line.split(',').map(cell => cell.trim().replace(/^"|"$/g, '')));
+    }
+
+    /**
+     * פונקציה: ממירה תאריך ISO (YYYY-MM-DD) לפורמט עברי (יום/חודש/שנה).
+     */
+    function formatDateToHebrew(isoDate) {
+        try {
+            // יצירת אובייקט Date. שימוש בקיזוז של 12 שעות כדי למנוע טעות ביום עקב אזור זמן.
+            const date = new Date(isoDate + 'T12:00:00'); 
+            
+            // שימוש ב-toLocaleDateString עם הגדרות עבריות
+            return date.toLocaleDateString('he-IL', {
+                year: 'numeric',
+                month: 'numeric',
+                day: 'numeric'
+            });
+        } catch (e) {
+            return isoDate; // אם יש שגיאה, מחזירים את הטקסט המקורי
+        }
+    }
+
+    /**
+     * מוסיף את הנתונים המעובדים ל-HTML Grid.
+     */
+    function renderGridData(data, grid) {
+        data.forEach(row => {
+            // ודא שיש מספיק עמודות (6)
+            if (row.length < 6) return; 
+
+            // סדר העמודות: [0:תאריך, 1:יום, 2:שעה, 3:אירוע, 4:מיקום, 5:תזמורת]
+            
+            // 1. תאריך (המרת ISO לעברית)
+            const hebrewDate = formatDateToHebrew(row[0]);
+            appendCell(grid, hebrewDate, 'event-date-cell'); 
+            
+            // 2. יום
+            appendCell(grid, row[1]); 
+            
+            // 3. שעה
+            appendCell(grid, row[2]); 
+            
+            // 4. אירוע
+            appendCell(grid, row[3], 'event-name-cell'); 
+            
+            // 5. מיקום
+            appendCell(grid, row[4]); 
+            
+            // 6. תזמורת/DJ
+            appendCell(grid, row[5]); 
+        });
+    }
+
+    /**
+     * פונקציית עזר להוספת תא לגריד.
+     */
+    function appendCell(parentGrid, content, extraClass = '') {
+        const cell = document.createElement('div');
+        cell.className = 'event-cell ' + extraClass;
+        cell.textContent = content;
+        parentGrid.appendChild(cell);
+    }
+    
+    /**
+     * פונקציית עזר להצגת שגיאות.
+     */
+    function displayError(message) {
+        const container = document.getElementById('loading');
+        container.classList.add('error');
+        container.textContent = message;
+        container.style.display = 'block';
+    }
+</script>
+
+</body>
+</html>
