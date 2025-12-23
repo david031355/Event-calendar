@@ -18,6 +18,7 @@
             --text-secondary: #666666;
             --border-radius: 12px;
             --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --highlight-color: #FFD700; /* צבע זהב להדגשה */
         }
 
         body {
@@ -111,13 +112,29 @@
             grid-template-columns: 100px 1fr auto; /* תאריך | פרטים | ועד */
             gap: 20px;
             align-items: center;
-            transition: transform 0.2s;
+            transition: transform 0.2s, box-shadow 0.2s;
             border-right: 5px solid var(--primary-color);
+            position: relative;
         }
 
         .event-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        /* --- סגנון מודגש לאירוע שנבחר ספציפית --- */
+        .event-card.highlight {
+            border: 2px solid var(--highlight-color);
+            border-right: 6px solid var(--highlight-color);
+            background-color: #fffdf0; /* רקע צהבהב עדין */
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 215, 0, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); }
         }
 
         /* אזור התאריך */
@@ -128,6 +145,11 @@
             border-radius: 8px;
             color: var(--accent-color);
             border: 1px solid #efebe9;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-width: 90px;
         }
 
         .date-day {
@@ -140,6 +162,21 @@
             font-size: 0.9rem;
             color: var(--text-secondary);
         }
+        
+        /* תגית זמן יחסי (היום/מחר/השבוע) */
+        .relative-date-tag {
+            font-size: 0.8rem;
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-top: 5px;
+            display: inline-block;
+        }
+        
+        .tag-today { background-color: #ffebee; color: #c62828; border: 1px solid #ffcdd2; }
+        .tag-tomorrow { background-color: #fff3e0; color: #ef6c00; border: 1px solid #ffe0b2; }
+        .tag-this-week { background-color: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
+        .tag-next-week { background-color: #e3f2fd; color: #1565c0; border: 1px solid #bbdefb; }
 
         /* פרטי האירוע */
         .info-box h3 {
@@ -159,13 +196,13 @@
         
         .icon { opacity: 0.7; }
 
-        /* אזור הועד (מחליף את השעה) */
+        /* אזור הועד */
         .vaad-badge {
             text-align: center;
             font-weight: 500;
             color: var(--accent-color);
             font-size: 1rem;
-            background: #EFEBE9; /* רקע חום בהיר מאוד */
+            background: #EFEBE9;
             padding: 6px 14px;
             border-radius: 20px;
             white-space: nowrap;
@@ -211,16 +248,19 @@
             }
 
             .event-card {
-                grid-template-columns: 1fr; /* טור אחד */
+                grid-template-columns: 1fr;
                 gap: 12px;
                 text-align: center;
                 padding: 15px;
                 border-right: none;
                 border-top: 5px solid var(--primary-color);
-                position: relative; /* כדי לאפשר מיקום מוחלט של הועד */
+            }
+            
+            .event-card.highlight {
+                border-top: 6px solid var(--highlight-color);
+                border-right: none;
             }
 
-            /* במובייל, הועד יופיע בפינה השמאלית העליונה כטאג */
             .vaad-badge {
                 position: absolute;
                 top: 15px;
@@ -232,14 +272,17 @@
             }
 
             .date-box {
-                display: flex;
-                justify-content: center;
-                gap: 10px;
-                align-items: baseline;
                 background: none;
                 border: none;
                 padding: 0;
-                margin-top: 20px; /* מרווח בגלל תג הועד */
+                margin-top: 25px;
+                margin-bottom: 10px;
+            }
+            
+            /* במובייל התגית תהיה מתחת לתאריך בצורה נקייה */
+            .relative-date-tag {
+                margin-top: 5px;
+                font-size: 0.9rem;
             }
 
             .info-box h3 {
@@ -308,18 +351,15 @@
             const csvText = await response.text();
             let rawEvents = parseCSV(csvText);
 
-            // הסרת שורת הכותרות
             if (rawEvents.length > 0 && (rawEvents[0][0].includes('תאריך') || rawEvents[0][1].includes('יום'))) {
                 rawEvents.shift();
             }
 
-            // עיבוד ומיון ראשוני
             allEvents = processEvents(rawEvents);
 
             loadingEl.style.display = 'none';
             renderEvents(allEvents);
 
-            // הפעלת מאזינים לשינויים בחיפוש או בתאריך
             searchInput.addEventListener('input', runFilters);
             dateInput.addEventListener('change', runFilters);
 
@@ -331,27 +371,21 @@
         }
     }
 
-    /**
-     * עיבוד, סינון עבר, ומיון
-     */
     function processEvents(rows) {
         const today = new Date();
         today.setHours(0, 0, 0, 0); 
 
-        // 1. המרה לאובייקטים
         const eventsWithDates = rows.map(row => {
             const dateStr = row[6] || ''; 
             const dateObj = parseDateString(dateStr);
             return { originalRow: row, dateObj: dateObj };
         });
 
-        // 2. סינון אירועי עבר (משאירים רק עתיד + היום)
         const futureEvents = eventsWithDates.filter(item => {
-            if (!item.dateObj) return true; 
+            if (!item.dateObj) return true;
             return item.dateObj >= today;
         });
 
-        // 3. מיון
         futureEvents.sort((a, b) => {
             if (!a.dateObj) return 1;
             if (!b.dateObj) return -1;
@@ -361,43 +395,39 @@
         return futureEvents;
     }
 
-    /**
-     * פונקציית הסינון הראשית - משלבת טקסט ותאריך
-     */
     function runFilters() {
         const searchTerm = document.getElementById('searchInput').value.toLowerCase();
         const filterDateVal = document.getElementById('dateInput').value;
         
         let filterDateObj = null;
         if (filterDateVal) {
-            filterDateObj = new Date(filterDateVal);
-            filterDateObj.setHours(0,0,0,0);
+            const parts = filterDateVal.split('-');
+            if (parts.length === 3) {
+                filterDateObj = new Date(parts[0], parts[1] - 1, parts[2]);
+                filterDateObj.setHours(0,0,0,0);
+            }
         }
 
         const filtered = allEvents.filter(item => {
             const row = item.originalRow;
             const eventDateObj = item.dateObj;
             
-            // 1. בדיקת טקסט
             const rowText = row.join(' ').toLowerCase();
             const textMatch = rowText.includes(searchTerm);
             
-            // 2. בדיקת תאריך (אם נבחר)
-            // מציג אירועים החל מהתאריך הנבחר ואילך
             let dateMatch = true;
             if (filterDateObj && eventDateObj) {
-                dateMatch = eventDateObj >= filterDateObj;
+                dateMatch = eventDateObj.getTime() === filterDateObj.getTime();
             }
 
             return textMatch && dateMatch;
         });
 
-        // טיפול במצב "אין תוצאות"
         const noResults = document.getElementById('noResults');
         if (filtered.length === 0) {
             noResults.style.display = 'block';
             if (filterDateVal && !searchTerm) {
-                noResults.textContent = "אין אירועים החל מהתאריך שנבחר 📅";
+                noResults.textContent = "אין אירוע בתאריך זה 📅";
             } else {
                 noResults.textContent = "לא נמצאו אירועים התואמים לחיפוש 😕";
             }
@@ -405,18 +435,62 @@
             noResults.style.display = 'none';
         }
 
-        renderEvents(filtered);
+        const highlightMode = !!filterDateObj;
+        renderEvents(filtered, highlightMode);
+    }
+
+    // --- לוגיקה חדשה: חישוב תווית זמן יחסי ---
+    function getRelativeTimeLabel(dateObj) {
+        if (!dateObj) return null;
+        
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        
+        // יצירת עותק נקי של תאריך היעד
+        const target = new Date(dateObj);
+        target.setHours(0, 0, 0, 0);
+        
+        // הפרש בימים
+        const diffTime = target - now;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        // 1. היום
+        if (diffDays === 0) return { text: 'היום! 🎉', class: 'tag-today' };
+        
+        // 2. מחר
+        if (diffDays === 1) return { text: 'מחר', class: 'tag-tomorrow' };
+        
+        // חישוב ימי השבוע (0=ראשון, 6=שבת)
+        const currentDayOfWeek = now.getDay();
+        const daysUntilEndOfWeek = 6 - currentDayOfWeek; // כמה ימים נשארו עד סוף השבוע הנוכחי (שבת)
+        
+        // 3. השבוע (עד שבת הקרובה, ולא כולל היום/מחר אם כבר טופלו)
+        if (diffDays <= daysUntilEndOfWeek && diffDays > 1) {
+            return { text: 'השבוע', class: 'tag-this-week' };
+        }
+        
+        // 4. שבוע הבא (מיום ראשון הבא עד שבת שאחריו)
+        const startNextWeek = daysUntilEndOfWeek + 1;
+        const endNextWeek = daysUntilEndOfWeek + 7;
+        
+        if (diffDays >= startNextWeek && diffDays <= endNextWeek) {
+            return { text: 'שבוע הבא', class: 'tag-next-week' };
+        }
+        
+        return null; // רחוק יותר
     }
 
     function parseDateString(dateStr) {
         if (!dateStr) return null;
         dateStr = dateStr.trim();
-        const parts = dateStr.split(/[/\.]/); // תומך גם ב-נקודה וגם ב-סלאש
+        const parts = dateStr.split(/[-/.]/); 
         
         if (parts.length === 3) {
             const day = parseInt(parts[0], 10);
             const month = parseInt(parts[1], 10) - 1;
-            const year = parseInt(parts[2], 10);
+            let year = parseInt(parts[2], 10);
+            if (year < 100) year += 2000;
+
             if (year > 2000 && month >= 0 && month <= 11 && day >= 1 && day <= 31) {
                 return new Date(year, month, day);
             }
@@ -457,31 +531,40 @@
         return rows;
     }
 
-    function renderEvents(eventsWrapper) {
+    function renderEvents(eventsWrapper, highlight = false) {
         const container = document.getElementById('eventsList');
         container.innerHTML = '';
         
         eventsWrapper.forEach(item => {
             const row = item.originalRow;
+            const dateObj = item.dateObj;
+            
             if (row.length < 4) return; 
 
             const date = row[0] || '';
             const day = row[1] || '';
-            const vaad = row[2] || ''; // עמודה C כעת מוגדרת כ"ועד"
+            const vaad = row[2] || '';
             const title = row[3] || 'אירוע';
             const location = row[4] || '';
             const orchestra = row[5] || '';
 
             const card = document.createElement('div');
-            card.className = 'event-card';
+            card.className = 'event-card' + (highlight ? ' highlight' : '');
             
-            // בדיקה אם יש תוכן ב"ועד" כדי שלא נציג תג ריק
             const vaadHtml = vaad ? `<div class="vaad-badge">${vaad}</div>` : '';
+
+            // בדיקת תגית זמן יחסי
+            let relativeTagHtml = '';
+            const relativeInfo = getRelativeTimeLabel(dateObj);
+            if (relativeInfo) {
+                relativeTagHtml = `<div class="relative-date-tag ${relativeInfo.class}">${relativeInfo.text}</div>`;
+            }
 
             card.innerHTML = `
                 <div class="date-box">
                     <span class="date-day">${day}</span>
                     <span class="date-full">${date}</span>
+                    ${relativeTagHtml}
                 </div>
                 
                 <div class="info-box">
