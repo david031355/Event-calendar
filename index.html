@@ -103,7 +103,7 @@
             box-shadow: var(--shadow);
             padding: 20px;
             display: grid;
-            grid-template-columns: 100px 1fr auto;
+            grid-template-columns: 110px 1fr auto;
             gap: 20px;
             align-items: center;
             transition: transform 0.2s, box-shadow 0.2s;
@@ -133,7 +133,7 @@
         .date-box {
             text-align: center;
             background-color: #fff8f6;
-            padding: 10px;
+            padding: 10px 5px;
             border-radius: 8px;
             color: var(--accent-color);
             border: 1px solid #efebe9;
@@ -141,27 +141,28 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-width: 90px;
+            min-width: 100px;
+            gap: 4px;
         }
 
         .date-day {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             font-weight: 700;
             display: block;
         }
 
         .date-full {
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             color: var(--text-secondary);
         }
         
         .relative-date-tag {
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             font-weight: bold;
-            padding: 2px 8px;
+            padding: 2px 6px;
             border-radius: 10px;
-            margin-top: 5px;
             display: inline-block;
+            width: fit-content;
         }
         
         .tag-today { background-color: #ffebee; color: #c62828; border: 1px solid #ffcdd2; }
@@ -169,25 +170,24 @@
         .tag-this-week { background-color: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
         .tag-next-week { background-color: #e3f2fd; color: #1565c0; border: 1px solid #bbdefb; }
 
+        /* סגנון ספירת הימים בתוך ריבוע התאריך */
+        .days-count {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            background: #f1eeed;
+            padding: 1px 6px;
+            border-radius: 8px;
+            font-weight: 500;
+            margin-top: 2px;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+
         .info-box h3 {
             margin: 0 0 5px 0;
             font-size: 1.3rem;
             color: var(--text-main);
-        }
-
-        /* סגנון חדש לספירת הימים */
-        .days-count {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            font-size: 0.85rem;
-            color: var(--accent-color);
-            background: #EFEBE9;
-            padding: 3px 10px;
-            border-radius: 15px;
-            margin-top: 8px;
-            font-weight: 500;
-            border: 1px dashed var(--secondary-color);
         }
 
         .info-location, .info-orchestra {
@@ -305,11 +305,12 @@
                 padding: 0;
                 margin-top: 25px;
                 margin-bottom: 10px;
+                min-width: unset;
             }
             
             .relative-date-tag {
-                margin-top: 5px;
-                font-size: 0.9rem;
+                margin-top: 2px;
+                font-size: 0.85rem;
             }
 
             .info-box h3 {
@@ -388,7 +389,7 @@
         } catch (err) {
             console.error(err);
             loadingEl.style.display = 'none';
-            errorEl.textContent = 'אופס! לא הצלחנו לטעון את הנתונים. אנא ודא שהוספת את העמודה "תאריך לועזי" (עמודה G) בגיליון.';
+            errorEl.textContent = 'אופס! לא הצלחנו לטעון את הנתונים.';
             errorEl.style.display = 'block';
         }
     }
@@ -448,11 +449,6 @@
         const noResults = document.getElementById('noResults');
         if (filtered.length === 0) {
             noResults.style.display = 'block';
-            if (filterDateVal && !searchTerm) {
-                noResults.textContent = "אין אירוע בתאריך זה 📅";
-            } else {
-                noResults.textContent = "לא נמצאו אירועים התואמים לחיפוש 😕";
-            }
         } else {
             noResults.style.display = 'none';
         }
@@ -474,7 +470,6 @@
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
         if (diffDays === 0) return { text: 'היום! 🎉', class: 'tag-today' };
-        
         if (diffDays === 1) return { text: 'מחר', class: 'tag-tomorrow' };
         
         const currentDayOfWeek = now.getDay();
@@ -498,16 +493,12 @@
         if (!dateStr) return null;
         dateStr = dateStr.trim();
         const parts = dateStr.split(/[-/.]/); 
-        
         if (parts.length === 3) {
             const day = parseInt(parts[0], 10);
             const month = parseInt(parts[1], 10) - 1;
             let year = parseInt(parts[2], 10);
             if (year < 100) year += 2000;
-
-            if (year > 2000 && month >= 0 && month <= 11 && day >= 1 && day <= 31) {
-                return new Date(year, month, day);
-            }
+            return new Date(year, month, day);
         }
         return null;
     }
@@ -518,25 +509,20 @@
         let currentCell = '';
         let insideQuotes = false;
         text = text.replace(/\r/g, '');
-
         for (let i = 0; i < text.length; i++) {
             const char = text[i];
             const nextChar = text[i + 1];
             if (char === '"') {
                 if (insideQuotes && nextChar === '"') {
                     currentCell += '"'; i++;
-                } else {
-                    insideQuotes = !insideQuotes;
-                }
+                } else { insideQuotes = !insideQuotes; }
             } else if (char === ',' && !insideQuotes) {
                 currentRow.push(currentCell.trim()); currentCell = '';
             } else if (char === '\n' && !insideQuotes) {
                 currentRow.push(currentCell.trim());
                 if (currentRow.length > 1) rows.push(currentRow);
                 currentRow = []; currentCell = '';
-            } else {
-                currentCell += char;
-            }
+            } else { currentCell += char; }
         }
         if (currentCell || currentRow.length > 0) {
             currentRow.push(currentCell.trim());
@@ -549,14 +535,12 @@
         const container = document.getElementById('eventsList');
         container.innerHTML = '';
 
-        // קבלת התאריך של היום לצורך חישוב "עוד כמה ימים"
         const now = new Date();
         now.setHours(0, 0, 0, 0);
         
         eventsWrapper.forEach(item => {
             const row = item.originalRow;
             const dateObj = item.dateObj;
-            
             if (row.length < 4) return; 
 
             const date = row[0] || '';
@@ -566,24 +550,15 @@
             const location = row[4] || '';
             const orchestra = row[5] || '';
 
-            const card = document.createElement('div');
-            card.className = 'event-card' + (highlight ? ' highlight' : '');
-            
-            const vaadHtml = vaad ? `<div class="vaad-badge">${vaad}</div>` : '';
-
             // חישוב ימים שנותרו
             let daysLeftHtml = '';
             if (dateObj) {
                 const diffTime = dateObj - now;
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                 
-                let daysText = '';
-                if (diffDays === 0) daysText = 'היום';
-                else if (diffDays === 1) daysText = 'מחר';
-                else if (diffDays === 2) daysText = 'בעוד יומיים';
-                else daysText = `בעוד ${diffDays} ימים`;
-                
-                daysLeftHtml = `<div class="days-count">⏳ ${daysText}</div>`;
+                if (diffDays > 2) { // רק אם זה מעבר ליומיים נציג ספירה
+                    daysLeftHtml = `<div class="days-count">⏳ בעוד ${diffDays} ימים</div>`;
+                }
             }
 
             let relativeTagHtml = '';
@@ -592,6 +567,11 @@
                 relativeTagHtml = `<div class="relative-date-tag ${relativeInfo.class}">${relativeInfo.text}</div>`;
             }
 
+            const card = document.createElement('div');
+            card.className = 'event-card' + (highlight ? ' highlight' : '');
+            
+            const vaadHtml = vaad ? `<div class="vaad-badge">${vaad}</div>` : '';
+
             let locationHtml = '';
             if (location) {
                 const mapLink = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(location)}&travelmode=transit`;
@@ -599,9 +579,7 @@
                     <div class="info-location">
                         <span class="icon">📍</span> 
                         <span>${location}</span>
-                        <a href="${mapLink}" target="_blank" class="nav-btn" title="ניווט בתחבורה ציבורית">
-                            🚌
-                        </a>
+                        <a href="${mapLink}" target="_blank" class="nav-btn" title="ניווט בתחבורה ציבורית">🚌</a>
                     </div>`;
             }
 
@@ -610,13 +588,13 @@
                     <span class="date-day">${day}</span>
                     <span class="date-full">${date}</span>
                     ${relativeTagHtml}
+                    ${daysLeftHtml}
                 </div>
                 
                 <div class="info-box">
                     <h3>${title}</h3>
                     ${locationHtml}
                     ${orchestra ? `<div class="info-orchestra"><span class="icon">🎵</span> ${orchestra}</div>` : ''}
-                    ${daysLeftHtml}
                 </div>
                 
                 ${vaadHtml}
