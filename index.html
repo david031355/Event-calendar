@@ -175,6 +175,21 @@
             color: var(--text-main);
         }
 
+        /* סגנון חדש לספירת הימים */
+        .days-count {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.85rem;
+            color: var(--accent-color);
+            background: #EFEBE9;
+            padding: 3px 10px;
+            border-radius: 15px;
+            margin-top: 8px;
+            font-weight: 500;
+            border: 1px dashed var(--secondary-color);
+        }
+
         .info-location, .info-orchestra {
             display: flex;
             align-items: center;
@@ -533,6 +548,10 @@
     function renderEvents(eventsWrapper, highlight = false) {
         const container = document.getElementById('eventsList');
         container.innerHTML = '';
+
+        // קבלת התאריך של היום לצורך חישוב "עוד כמה ימים"
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
         
         eventsWrapper.forEach(item => {
             const row = item.originalRow;
@@ -551,6 +570,21 @@
             card.className = 'event-card' + (highlight ? ' highlight' : '');
             
             const vaadHtml = vaad ? `<div class="vaad-badge">${vaad}</div>` : '';
+
+            // חישוב ימים שנותרו
+            let daysLeftHtml = '';
+            if (dateObj) {
+                const diffTime = dateObj - now;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                
+                let daysText = '';
+                if (diffDays === 0) daysText = 'היום';
+                else if (diffDays === 1) daysText = 'מחר';
+                else if (diffDays === 2) daysText = 'בעוד יומיים';
+                else daysText = `בעוד ${diffDays} ימים`;
+                
+                daysLeftHtml = `<div class="days-count">⏳ ${daysText}</div>`;
+            }
 
             let relativeTagHtml = '';
             const relativeInfo = getRelativeTimeLabel(dateObj);
@@ -582,6 +616,7 @@
                     <h3>${title}</h3>
                     ${locationHtml}
                     ${orchestra ? `<div class="info-orchestra"><span class="icon">🎵</span> ${orchestra}</div>` : ''}
+                    ${daysLeftHtml}
                 </div>
                 
                 ${vaadHtml}
