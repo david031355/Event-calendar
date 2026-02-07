@@ -170,7 +170,6 @@
         .tag-this-week { background-color: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
         .tag-next-week { background-color: #e3f2fd; color: #1565c0; border: 1px solid #bbdefb; }
 
-        /* סגנון ספירת הימים בתוך ריבוע התאריך */
         .days-count {
             font-size: 0.75rem;
             color: var(--text-secondary);
@@ -267,59 +266,15 @@
 
         @media (max-width: 768px) {
             body { padding: 15px; }
-            
             h1 { font-size: 1.6rem; }
-
-            .filters-container {
-                flex-direction: column;
-                gap: 10px;
-            }
-
-            .event-card {
-                grid-template-columns: 1fr;
-                gap: 12px;
-                text-align: center;
-                padding: 15px;
-                border-right: none;
-                border-top: 5px solid var(--primary-color);
-            }
-            
-            .event-card.highlight {
-                border-top: 6px solid var(--highlight-color);
-                border-right: none;
-            }
-
-            .vaad-badge {
-                position: absolute;
-                top: 15px;
-                left: 15px;
-                font-size: 0.85rem;
-                padding: 4px 10px;
-                background: #fff3e0;
-                border-color: #ffe0b2;
-            }
-
-            .date-box {
-                background: none;
-                border: none;
-                padding: 0;
-                margin-top: 25px;
-                margin-bottom: 10px;
-                min-width: unset;
-            }
-            
-            .relative-date-tag {
-                margin-top: 2px;
-                font-size: 0.85rem;
-            }
-
-            .info-box h3 {
-                font-size: 1.4rem;
-            }
-
-            .info-location, .info-orchestra {
-                justify-content: center;
-            }
+            .filters-container { flex-direction: column; gap: 10px; }
+            .event-card { grid-template-columns: 1fr; gap: 12px; text-align: center; padding: 15px; border-right: none; border-top: 5px solid var(--primary-color); }
+            .event-card.highlight { border-top: 6px solid var(--highlight-color); border-right: none; }
+            .vaad-badge { position: absolute; top: 15px; left: 15px; font-size: 0.85rem; padding: 4px 10px; background: #fff3e0; border-color: #ffe0b2; }
+            .date-box { background: none; border: none; padding: 0; margin-top: 25px; margin-bottom: 10px; min-width: unset; }
+            .relative-date-tag { margin-top: 2px; font-size: 0.85rem; }
+            .info-box h3 { font-size: 1.4rem; }
+            .info-location, .info-orchestra { justify-content: center; }
         }
     </style>
 </head>
@@ -328,7 +283,7 @@
 <div class="container">
     <header>
         <h1>חתונות ושמחות ישיבת יסודות 💍</h1>
-        <div class="subtitle">ניתן לבדוק תחבורה ציבורית בלחיצה על 🚌</div>
+        <div class="subtitle">ניתן לבדוק תחבורה ציבורית בלחיצה על 🚶</div>
     </header>
 
     <div class="filters-container">
@@ -346,9 +301,7 @@
     </div>
     
     <div id="error" class="error" style="display: none;"></div>
-    
     <div id="eventsList" class="events-list"></div>
-    
     <div id="noResults" class="no-results" style="display: none;">
         לא נמצאו אירועים התואמים לחיפוש שלך 😕
     </div>
@@ -379,7 +332,6 @@
             }
 
             allEvents = processEvents(rawEvents);
-
             loadingEl.style.display = 'none';
             renderEvents(allEvents);
 
@@ -434,7 +386,6 @@
         const filtered = allEvents.filter(item => {
             const row = item.originalRow;
             const eventDateObj = item.dateObj;
-            
             const rowText = row.join(' ').toLowerCase();
             const textMatch = rowText.includes(searchTerm);
             
@@ -442,16 +393,11 @@
             if (filterDateObj && eventDateObj) {
                 dateMatch = eventDateObj.getTime() === filterDateObj.getTime();
             }
-
             return textMatch && dateMatch;
         });
 
         const noResults = document.getElementById('noResults');
-        if (filtered.length === 0) {
-            noResults.style.display = 'block';
-        } else {
-            noResults.style.display = 'none';
-        }
+        noResults.style.display = filtered.length === 0 ? 'block' : 'none';
 
         const highlightMode = !!filterDateObj;
         renderEvents(filtered, highlightMode);
@@ -459,40 +405,27 @@
 
     function getRelativeTimeLabel(dateObj) {
         if (!dateObj) return null;
-        
         const now = new Date();
         now.setHours(0, 0, 0, 0);
-        
         const target = new Date(dateObj);
         target.setHours(0, 0, 0, 0);
         
-        const diffTime = target - now;
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
+        const diffDays = Math.ceil((target - now) / (1000 * 60 * 60 * 24));
         if (diffDays === 0) return { text: 'היום! 🎉', class: 'tag-today' };
         if (diffDays === 1) return { text: 'מחר', class: 'tag-tomorrow' };
         
-        const currentDayOfWeek = now.getDay();
-        const daysUntilEndOfWeek = 6 - currentDayOfWeek;
+        const daysUntilEndOfWeek = 6 - now.getDay();
+        if (diffDays <= daysUntilEndOfWeek && diffDays > 1) return { text: 'השבוע', class: 'tag-this-week' };
         
-        if (diffDays <= daysUntilEndOfWeek && diffDays > 1) {
-            return { text: 'השבוע', class: 'tag-this-week' };
-        }
-        
-        const startNextWeek = daysUntilEndOfWeek + 1;
-        const endNextWeek = daysUntilEndOfWeek + 7;
-        
-        if (diffDays >= startNextWeek && diffDays <= endNextWeek) {
+        if (diffDays >= (daysUntilEndOfWeek + 1) && diffDays <= (daysUntilEndOfWeek + 7)) {
             return { text: 'שבוע הבא', class: 'tag-next-week' };
         }
-        
         return null;
     }
 
     function parseDateString(dateStr) {
         if (!dateStr) return null;
-        dateStr = dateStr.trim();
-        const parts = dateStr.split(/[-/.]/); 
+        const parts = dateStr.trim().split(/[-/.]/); 
         if (parts.length === 3) {
             const day = parseInt(parts[0], 10);
             const month = parseInt(parts[1], 10) - 1;
@@ -511,11 +444,9 @@
         text = text.replace(/\r/g, '');
         for (let i = 0; i < text.length; i++) {
             const char = text[i];
-            const nextChar = text[i + 1];
             if (char === '"') {
-                if (insideQuotes && nextChar === '"') {
-                    currentCell += '"'; i++;
-                } else { insideQuotes = !insideQuotes; }
+                if (insideQuotes && text[i+1] === '"') { currentCell += '"'; i++; }
+                else { insideQuotes = !insideQuotes; }
             } else if (char === ',' && !insideQuotes) {
                 currentRow.push(currentCell.trim()); currentCell = '';
             } else if (char === '\n' && !insideQuotes) {
@@ -534,7 +465,6 @@
     function renderEvents(eventsWrapper, highlight = false) {
         const container = document.getElementById('eventsList');
         container.innerHTML = '';
-
         const now = new Date();
         now.setHours(0, 0, 0, 0);
         
@@ -550,22 +480,15 @@
             const location = row[4] || '';
             const orchestra = row[5] || '';
 
-            // חישוב ימים שנותרו
             let daysLeftHtml = '';
             if (dateObj) {
-                const diffTime = dateObj - now;
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                
-                if (diffDays > 2) { // רק אם זה מעבר ליומיים נציג ספירה
-                    daysLeftHtml = `<div class="days-count">⏳ בעוד ${diffDays} ימים</div>`;
-                }
+                const diffDays = Math.ceil((dateObj - now) / (1000 * 60 * 60 * 24));
+                if (diffDays > 2) daysLeftHtml = `<div class="days-count">⏳ בעוד ${diffDays} ימים</div>`;
             }
 
             let relativeTagHtml = '';
             const relativeInfo = getRelativeTimeLabel(dateObj);
-            if (relativeInfo) {
-                relativeTagHtml = `<div class="relative-date-tag ${relativeInfo.class}">${relativeInfo.text}</div>`;
-            }
+            if (relativeInfo) relativeTagHtml = `<div class="relative-date-tag ${relativeInfo.class}">${relativeInfo.text}</div>`;
 
             const card = document.createElement('div');
             card.className = 'event-card' + (highlight ? ' highlight' : '');
@@ -574,12 +497,13 @@
 
             let locationHtml = '';
             if (location) {
+                // חזרה לניווט בתחבורה ציבורית (travelmode=transit)
                 const mapLink = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(location)}&travelmode=transit`;
                 locationHtml = `
                     <div class="info-location">
                         <span class="icon">📍</span> 
                         <span>${location}</span>
-                        <a href="${mapLink}" target="_blank" class="nav-btn" title="ניווט בתחבורה ציבורית">🚌</a>
+                        <a href="${mapLink}" target="_blank" class="nav-btn" title="ניווט בתחבורה ציבורית">🚶</a>
                     </div>`;
             }
 
@@ -590,13 +514,11 @@
                     ${relativeTagHtml}
                     ${daysLeftHtml}
                 </div>
-                
                 <div class="info-box">
                     <h3>${title}</h3>
                     ${locationHtml}
                     ${orchestra ? `<div class="info-orchestra"><span class="icon">🎵</span> ${orchestra}</div>` : ''}
                 </div>
-                
                 ${vaadHtml}
             `;
             container.appendChild(card);
