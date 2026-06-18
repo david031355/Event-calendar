@@ -922,22 +922,19 @@
         }
     }
 
-    // --- שליחת לוג (FormData) תוך עקיפת שגיאת CORS ---
+    // --- שליחת לוג תוך עקיפת שגיאת CORS ---
     window.addEventListener('load', () => {
         setTimeout(() => {
             try {
-                const url = 'https://david.kesug.com/yesodot_log/';
-                const formData = new FormData();
-                formData.append('action', 'write_log');
+                // הוספנו את הבקשה לכתיבת הלוג ישירות בתוך הקישור עצמו!
+                const url = 'https://david.kesug.com/yesodot_log/?action=write_log';
                 
-                // שימוש ב-fetch עם no-cors בשילוב FormData
-                // זה מונע לחלוטין את שגיאת ה-CORS האדומה שראית בקונסול
+                // שימוש ב-fetch עם no-cors כדי לא לחטוף שגיאה אדומה מהדפדפן
                 fetch(url, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    body: formData
+                    method: 'GET',
+                    mode: 'no-cors'
                 }).then(() => {
-                    console.log('בקשת לוג נשלחה (ללא שגיאת CORS)');
+                    console.log('בקשת לוג נשלחה בהצלחה עם הקישור המלא');
                 }).catch(e => console.log('שגיאה בשליחת לוג:', e));
                 
             } catch (e) {
