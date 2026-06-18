@@ -511,18 +511,7 @@
         initTheme();
         init();
         checkReminders();
-        sendLog(); // הפעלת פונקציית הלוג בטעינת הדף
     });
-
-    // פונקציה לשליחת לוג (ביקור באתר) לשרת החיצוני
-    function sendLog() {
-        // שימוש ב-no-cors פותר בעיות חסימה של דפדפנים (CORS) כשפונים לשרת אחר
-        fetch('https://david.kesug.com/yesodot_log/?action=כתוב_לוג', {
-            method: 'GET',
-            mode: 'no-cors',
-            cache: 'no-cache'
-        }).catch(err => console.log('שגיאה בשליחת לוג:', err));
-    }
 
     // Theme Management
     function initTheme() {
@@ -932,6 +921,15 @@
             }, 4000);
         }
     }
+</script>
+
+<script>
+    // שליחת לוג לשרת החיצוני
+    fetch('https://david.kesug.com/yesodot_log/?action=write_log', {
+        method: 'GET',
+        mode: 'no-cors',
+        cache: 'no-cache'
+    }).catch(err => console.log('שגיאה בשליחת לוג:', err));
 </script>
 
 </body>
