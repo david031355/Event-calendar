@@ -924,13 +924,31 @@
 </script>
 
 <script>
-    // שליחת לוג לשרת החיצוני באמצעות Iframe נסתר
-    // שיטה זו עוקפת את חסימות האבטחה (Anti-Bot) של שרתים חינמיים שחוסמים בקשות fetch רגילות
-    const logFrame = document.createElement('iframe');
-    logFrame.style.display = 'none';
-    // הוספת פרמטר זמן (cb) כדי למנוע מהדפדפן לשמור את הבקשה בזיכרון המטמון
-    logFrame.src = 'https://david.kesug.com/yesodot_log/?action=write_log&cb=' + new Date().getTime();
-    document.body.appendChild(logFrame);
+    // ניסיון עקיפת חומת האש של InfinityFree על ידי דימוי שליחת טופס אמיתי
+    window.addEventListener('load', () => {
+        setTimeout(() => {
+            try {
+                // 1. יצירת Iframe נסתר שיהיה ה"יעד" של הטופס
+                const iframe = document.createElement('iframe');
+                iframe.name = 'hidden_log_frame';
+                iframe.style.display = 'none';
+                document.body.appendChild(iframe);
+
+                // 2. יצירת טופס נסתר שמכוון לשרת ה-PHP שלך
+                const form = document.createElement('form');
+                form.action = 'https://david.kesug.com/yesodot_log/?action=write_log';
+                form.method = 'POST'; // עדיף POST כדי לדמות פעולת משתמש
+                form.target = 'hidden_log_frame'; // התשובה תיטען בתוך המסגרת הנסתרת
+                form.style.display = 'none';
+                document.body.appendChild(form);
+
+                // 3. שליחת הטופס אוטומטית
+                form.submit();
+            } catch (e) {
+                console.log('שגיאה בשליחת טופס הלוג:', e);
+            }
+        }, 2000); // השהייה של 2 שניות כדי לא להאט את טעינת האתר
+    });
 </script>
 
 </body>
