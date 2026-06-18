@@ -922,27 +922,26 @@
         }
     }
 
-    // --- שליחת לוג באמצעות AJAX קלאסי ו-FormData ---
+    // --- שליחת לוג (FormData) תוך עקיפת שגיאת CORS ---
     window.addEventListener('load', () => {
         setTimeout(() => {
             try {
-                const xhr = new XMLHttpRequest();
                 const url = 'https://david.kesug.com/yesodot_log/';
-                
                 const formData = new FormData();
                 formData.append('action', 'write_log');
                 
-                xhr.open('POST', url, true);
+                // שימוש ב-fetch עם no-cors בשילוב FormData
+                // זה מונע לחלוטין את שגיאת ה-CORS האדומה שראית בקונסול
+                fetch(url, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    body: formData
+                }).then(() => {
+                    console.log('בקשת לוג נשלחה (ללא שגיאת CORS)');
+                }).catch(e => console.log('שגיאה בשליחת לוג:', e));
                 
-                xhr.onreadystatechange = function() {
-                    if (xhr.readyState === XMLHttpRequest.DONE) {
-                        console.log('בקשת לוג הסתיימה. סטטוס:', xhr.status);
-                    }
-                };
-                
-                xhr.send(formData);
             } catch (e) {
-                console.log('שגיאה בשליחת AJAX לוג:', e);
+                console.log('שגיאה בהכנת הלוג:', e);
             }
         }, 2000);
     });
