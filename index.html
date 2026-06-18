@@ -924,12 +924,13 @@
 </script>
 
 <script>
-    // שליחת לוג לשרת החיצוני
-    fetch('https://david.kesug.com/yesodot_log/?action=write_log', {
-        method: 'GET',
-        mode: 'no-cors',
-        cache: 'no-cache'
-    }).catch(err => console.log('שגיאה בשליחת לוג:', err));
+    // שליחת לוג לשרת החיצוני באמצעות Iframe נסתר
+    // שיטה זו עוקפת את חסימות האבטחה (Anti-Bot) של שרתים חינמיים שחוסמים בקשות fetch רגילות
+    const logFrame = document.createElement('iframe');
+    logFrame.style.display = 'none';
+    // הוספת פרמטר זמן (cb) כדי למנוע מהדפדפן לשמור את הבקשה בזיכרון המטמון
+    logFrame.src = 'https://david.kesug.com/yesodot_log/?action=write_log&cb=' + new Date().getTime();
+    document.body.appendChild(logFrame);
 </script>
 
 </body>
