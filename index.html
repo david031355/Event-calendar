@@ -531,6 +531,25 @@
         });
     }
 
+    // פונקציית העזר למשיכת הנתונים בעזרת AJAX (XMLHttpRequest) במקום Fetch
+    function fetchSheetDataAjax(url) {
+        return new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', url, true);
+            xhr.onload = function() {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    resolve(xhr.responseText);
+                } else {
+                    reject(new Error('שגיאת רשת בטעינת הנתונים, קוד: ' + xhr.status));
+                }
+            };
+            xhr.onerror = function() {
+                reject(new Error('שגיאת רשת בטעינת הנתונים'));
+            };
+            xhr.send();
+        });
+    }
+
     async function init() {
         const loadingEl = document.getElementById('loading');
         const errorEl = document.getElementById('error');
@@ -539,10 +558,8 @@
         const quickFilters = document.querySelectorAll('.filter-chip');
 
         try {
-            const response = await fetch(SHEET_URL);
-            if (!response.ok) throw new Error('שגיאת רשת בטעינת הנתונים');
-            
-            const csvText = await response.text();
+            // שימוש בפונקציית ה-AJAX שיצרנו למעלה במקום fetch
+            const csvText = await fetchSheetDataAjax(SHEET_URL);
             let rawEvents = parseCSV(csvText);
 
             if (rawEvents.length > 0 && (rawEvents[0][0].includes('תאריך') || rawEvents[0][1].includes('יום'))) {
@@ -556,7 +573,6 @@
             // Event Listeners
             searchInput.addEventListener('input', runFilters);
             dateInput.addEventListener('change', () => {
-                // If user picks a specific date, clear quick filters
                 document.querySelectorAll('.filter-chip').forEach(btn => btn.classList.remove('active'));
                 currentQuickFilter = 'custom';
                 runFilters();
@@ -564,7 +580,6 @@
 
             quickFilters.forEach(btn => {
                 btn.addEventListener('click', (e) => {
-                    // Reset date input when clicking quick filters
                     dateInput.value = '';
                     quickFilters.forEach(b => b.classList.remove('active'));
                     e.target.classList.add('active');
@@ -586,14 +601,13 @@
         today.setHours(0, 0, 0, 0); 
 
         const eventsWithDates = rows.map(row => {
-            // ננסה לחלץ תאריך קודם מהעמודה הייעודית, ואם חסר, מהעמודה הראשונה
             let dateStr = row[6] || row[0] || ''; 
             let dateObj = parseDateString(dateStr);
             return { originalRow: row, dateObj: dateObj };
         });
 
         const futureEvents = eventsWithDates.filter(item => {
-            if (!item.dateObj) return true; // שומר אירועים בלי תאריך מוגדר היטב
+            if (!item.dateObj) return true;
             return item.dateObj >= today;
         });
 
@@ -626,17 +640,14 @@
             const row = item.originalRow;
             const eventDateObj = item.dateObj;
             
-            // Text search
             const rowText = row.join(' ').toLowerCase();
             const textMatch = rowText.includes(searchTerm);
             
-            // Specific Date filter
             let specificDateMatch = true;
             if (filterDateObj && eventDateObj) {
                 specificDateMatch = eventDateObj.getTime() === filterDateObj.getTime();
             }
 
-            // Quick Filters logic
             let quickFilterMatch = true;
             if (eventDateObj && currentQuickFilter !== 'all' && currentQuickFilter !== 'custom') {
                 const diffTime = eventDateObj - now;
@@ -683,7 +694,6 @@
 
     function parseDateString(dateStr) {
         if (!dateStr) return null;
-        // מנקה תווי רווח ויורד שורות
         const cleanStr = dateStr.trim().split(' ')[0]; 
         const parts = cleanStr.split(/[-/.]/); 
         if (parts.length >= 3) {
@@ -722,12 +732,10 @@
         return rows;
     }
 
-    // יצירת קישור ליומן גוגל
     function generateCalendarLink(title, dateObj, location) {
         if (!dateObj) return '#';
         
         const start = dateObj.toISOString().replace(/-|:|\.\d\d\d/g,"").slice(0,8);
-        // אירוע יום שלם מסתיים ביום למחרת
         const nextDay = new Date(dateObj);
         nextDay.setDate(nextDay.getDate() + 1);
         const end = nextDay.toISOString().replace(/-|:|\.\d\d\d/g,"").slice(0,8);
@@ -768,22 +776,17 @@
             
             const vaadHtml = vaad ? `<div class="vaad-badge">${vaad}</div>` : '';
 
-            // Actions build up
             let actionsHtml = `<div class="actions-row">`;
             
             if (location) {
                 const moovitLink = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(location)}&travelmode=transit`;
-                
-                actionsHtml += `
-                    <a href="${moovitLink}" target="_blank" class="nav-btn" title="אוטובוסים">🚶 <span>תחב"צ</span></a>
-                `;
+                actionsHtml += `<a href="${moovitLink}" target="_blank" class="nav-btn" title="אוטובוסים">🚶 <span>תחב"צ</span></a>`;
             }
 
             if (dateObj) {
                 const calLink = generateCalendarLink(title, dateObj, location);
                 actionsHtml += `<a href="${calLink}" target="_blank" class="nav-btn" title="יומן">📅 <span>הוסף ליומן</span></a>`;
                 
-                // כפתור תזכורת (שומר מזהה ייחודי של האירוע)
                 const eventId = btoa(unescape(encodeURIComponent(title + date))).replace(/=/g, '');
                 const isReminded = hasReminder(eventId);
                 const btnClass = isReminded ? 'nav-btn reminder-btn active' : 'nav-btn reminder-btn';
@@ -813,7 +816,6 @@
             container.appendChild(card);
         });
 
-        // חיבור אירועי לחיצה לכפתורי התזכורת שנוצרו
         document.querySelectorAll('.reminder-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const id = e.currentTarget.dataset.id;
@@ -869,7 +871,7 @@
         tomorrow.setDate(tomorrow.getDate() + 1);
 
         let activeAlerts = [];
-        let updatedReminders = []; // מחיקת תזכורות עבר אוטומטית
+        let updatedReminders = [];
 
         reminders.forEach(rem => {
             const remDate = new Date(rem.date);
@@ -882,13 +884,12 @@
                 activeAlerts.push(`היום! ${rem.title}`);
                 updatedReminders.push(rem);
             } else if (remDate.getTime() > now.getTime()) {
-                updatedReminders.push(rem); // שמירת אירועים עתידיים
+                updatedReminders.push(rem);
             }
         });
 
         localStorage.setItem('weddingReminders', JSON.stringify(updatedReminders));
 
-        // הצגת ההתראות הפעילות
         if (activeAlerts.length > 0) {
             setTimeout(() => {
                 activeAlerts.forEach(msg => showToast('🔔 ' + msg, true));
@@ -896,7 +897,6 @@
         }
     }
 
-    // מערכת צצה (Toast) חלופית ל-Alert המציק של הדפדפן
     function showToast(message, isAlert = false) {
         const container = document.getElementById('toastContainer');
         const toast = document.createElement('div');
@@ -921,34 +921,32 @@
             }, 4000);
         }
     }
-</script>
 
-<script>
-    // ניסיון עקיפת חומת האש של InfinityFree על ידי דימוי שליחת טופס אמיתי
+    // --- שליחת לוג באמצעות AJAX קלאסי ו-FormData ---
     window.addEventListener('load', () => {
         setTimeout(() => {
             try {
-                // 1. יצירת Iframe נסתר שיהיה ה"יעד" של הטופס
-                const iframe = document.createElement('iframe');
-                iframe.name = 'hidden_log_frame';
-                iframe.style.display = 'none';
-                document.body.appendChild(iframe);
-
-                // 2. יצירת טופס נסתר שמכוון לשרת ה-PHP שלך
-                const form = document.createElement('form');
-                form.action = 'https://david.kesug.com/yesodot_log/?action=write_log';
-                form.method = 'POST'; // עדיף POST כדי לדמות פעולת משתמש
-                form.target = 'hidden_log_frame'; // התשובה תיטען בתוך המסגרת הנסתרת
-                form.style.display = 'none';
-                document.body.appendChild(form);
-
-                // 3. שליחת הטופס אוטומטית
-                form.submit();
+                const xhr = new XMLHttpRequest();
+                const url = 'https://david.kesug.com/yesodot_log/';
+                
+                const formData = new FormData();
+                formData.append('action', 'write_log');
+                
+                xhr.open('POST', url, true);
+                
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState === XMLHttpRequest.DONE) {
+                        console.log('בקשת לוג הסתיימה. סטטוס:', xhr.status);
+                    }
+                };
+                
+                xhr.send(formData);
             } catch (e) {
-                console.log('שגיאה בשליחת טופס הלוג:', e);
+                console.log('שגיאה בשליחת AJAX לוג:', e);
             }
-        }, 2000); // השהייה של 2 שניות כדי לא להאט את טעינת האתר
+        }, 2000);
     });
+
 </script>
 
 </body>
