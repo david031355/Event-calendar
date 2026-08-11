@@ -922,15 +922,16 @@
         }
     }
 
-    // --- שליחת לוג תוך עקיפת שגיאת CORS (שיטת POST) ---
+    // --- שליחת לוג דרך Google Apps Script ---
     window.addEventListener('load', () => {
         setTimeout(() => {
             try {
-                const url = 'https://david.kesug.com/yesodot_log/';
+                // הכתובת שקיבלת מגוגל סקריפט
+                const url = 'https://script.google.com/macros/s/AKfycbzqOLwQ2lbW0S9DsRvxRbc7JZlVCoNENK-j5dAldUs4G71WbH39KarI2YztNFLOAicSvw/exec';
                 
                 // יצירת אובייקט נתונים לדימוי טופס
                 const formData = new FormData();
-                formData.append('action', 'write_log');
+                formData.append('action', 'page_view');
                 
                 // שימוש ב-fetch עם POST ו-no-cors
                 fetch(url, {
@@ -938,7 +939,7 @@
                     mode: 'no-cors',
                     body: formData
                 }).then(() => {
-                    console.log('בקשת לוג נשלחה בהצלחה בשיטת POST');
+                    console.log('בקשת לוג נשלחה בהצלחה ל-Google Sheets');
                 }).catch(e => console.log('שגיאה בשליחת לוג:', e));
                 
             } catch (e) {
