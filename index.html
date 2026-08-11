@@ -922,32 +922,45 @@
         }
     }
 
-    // --- שליחת לוג דרך Google Apps Script ---
+    // --- שליחת לוג מורחב (עם IP ופרטי דפדפן) דרך Google Apps Script ---
     window.addEventListener('load', () => {
-        setTimeout(() => {
+        setTimeout(async () => {
             try {
-                // הכתובת שקיבלת מגוגל סקריפט
                 const url = 'https://script.google.com/macros/s/AKfycbzqOLwQ2lbW0S9DsRvxRbc7JZlVCoNENK-j5dAldUs4G71WbH39KarI2YztNFLOAicSvw/exec';
                 
-                // יצירת אובייקט נתונים לדימוי טופס
+                // קבלת כתובת ה-IP של המשתמש
+                let userIP = 'לא ידוע';
+                try {
+                    const ipResponse = await fetch('https://api.ipify.org?format=json');
+                    const ipData = await ipResponse.json();
+                    userIP = ipData.ip;
+                } catch (e) {
+                    console.log('לא ניתן היה למשוך IP:', e);
+                }
+
+                // זיהוי מערכת הפעלה/דפדפן
+                const userAgent = navigator.userAgent;
+
+                // הכנת הנתונים למשלוח
                 const formData = new FormData();
                 formData.append('action', 'page_view');
+                formData.append('ip', userIP);
+                formData.append('userAgent', userAgent);
                 
-                // שימוש ב-fetch עם POST ו-no-cors
+                // שליחה ל-Google Sheets
                 fetch(url, {
                     method: 'POST',
                     mode: 'no-cors',
                     body: formData
                 }).then(() => {
-                    console.log('בקשת לוג נשלחה בהצלחה ל-Google Sheets');
+                    console.log('לוג מורחב נשלח בהצלחה ל-Google Sheets');
                 }).catch(e => console.log('שגיאה בשליחת לוג:', e));
                 
             } catch (e) {
                 console.log('שגיאה בהכנת הלוג:', e);
             }
-        }, 2000);
+        }, 1500);
     });
-
 </script>
 
 </body>
